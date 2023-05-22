@@ -1,7 +1,7 @@
 AC_PREREQ([2.69])
 define(_CLIENT_VERSION_ITCOIN_BUILD, 1) # ITCOIN_SPECIFIC: this field controls the final digit in the version string "Itcoin Core version vMAJOR.MINOR.BUILD-itcoin-1"
 define(_CLIENT_VERSION_MAJOR, 23)
-define(_CLIENT_VERSION_MINOR, 1)
+define(_CLIENT_VERSION_MINOR, 2)
 define(_CLIENT_VERSION_BUILD, 0)
 define(_CLIENT_VERSION_RC, 0)
 define(_CLIENT_VERSION_IS_RELEASE, true)
