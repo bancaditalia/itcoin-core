@@ -1084,7 +1084,7 @@ static RPCHelpMan testblockvalidity()
         LOCK(cs_main);
         const CBlockIndex* pindex = chainman.m_blockman.LookupBlockIndex(block.hashPrevBlock);
         if (pindex) {
-            UpdateUncommittedBlockStructures(block, pindex, Params().GetConsensus());
+            chainman.UpdateUncommittedBlockStructures(block, pindex);
         }
     }
 
