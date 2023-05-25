@@ -1091,7 +1091,7 @@ static RPCHelpMan testblockvalidity()
     {
         LOCK(cs_main);
         BlockValidationState state;
-        if (!TestBlockValidity(state, chainparams, chainman.ActiveChainstate(), block, chainman.m_blockman.LookupBlockIndex(block.hashPrevBlock), true, true, check_signet_solution)) {
+        if (!TestBlockValidity(state, chainparams, chainman.ActiveChainstate(), block, chainman.m_blockman.LookupBlockIndex(block.hashPrevBlock), GetAdjustedTime, true, true, check_signet_solution)) {
             throw JSONRPCError(RPC_VERIFY_ERROR, strprintf("TestBlockValidity failed: %s", state.ToString()));
         }
         return BIP22ValidationResult(state);
