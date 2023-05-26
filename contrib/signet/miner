@@ -339,7 +339,7 @@ def do_generate_next_block(args, blocktime=None) -> Tuple[CBlock, dict, str]:
     cbwit = CTxInWitness()
     cbwit.scriptWitness.stack = [ser_uint256(witnonce)]
     block.vtx[0].wit.vtxinwit = [cbwit]
-    block.vtx[0].vout.append(CTxOut(0, get_witness_script(witroot, witnonce)))
+    block.vtx[0].vout.append(CTxOut(0, bytes(get_witness_script(witroot, witnonce))))
     block.vtx[0].rehash()
     logging.debug(f"Block merkle root (function which includes signatures) after appending witness commitment = { ser_uint256(block.calc_merkle_root()).hex() }")
 
