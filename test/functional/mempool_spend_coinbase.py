@@ -39,13 +39,9 @@ class MempoolSpendCoinbaseTest(BitcoinTestFramework):
 
         spend_mature_id = wallet.send_self_transfer(from_node=self.nodes[0], utxo_to_spend=utxo_mature)["txid"]
 
+        # other coinbase should be too immature to spend ITCOIN_SPECIFIC: this comment no longer applies
+        immature_tx = wallet.create_self_transfer(utxo_to_spend=utxo_immature)
         # ITCOIN_SPECIFIC - START
-        #
-        # The immature tx is mempool valid.
-        #
-        # The following original comment no longer applies:
-        # other coinbase should be too immature to spend
-        immature_tx = wallet.create_self_transfer(utxo_to_spend=utxo_immature, mempool_valid=True)  # ITCOIN_SPECIFIC: it was mempool_valid=False
         # The following original code would mine a new block without throwing
         # any errors. Calling it in itcoin would change the status of the chain
         # with respect to the original bitcoin test.
