@@ -61,11 +61,11 @@ BOOST_FIXTURE_TEST_CASE(BasicOutputTypesTest, AvailableCoinsTestingSetup)
     util::Result<CTxDestination> dest{util::Error{}};
     LOCK(wallet->cs_wallet);
 
-    // Verify our wallet has one usable coinbase UTXO before starting
-    // This UTXO is a P2PK, so it should show up in the Other bucket
+    // Verify our wallet has 100 (ITCOIN_SPECIFIC: it was one) usable coinbase UTXO before starting
+    // These UTXOs are P2PK, so they should show up in the Other bucket (ITCOIN_SPECIFIC: it was "This UTXO is a P2PK, so it"...)
     available_coins = AvailableCoins(*wallet);
-    BOOST_CHECK_EQUAL(available_coins.Size(), 1U);
-    BOOST_CHECK_EQUAL(available_coins.coins[OutputType::UNKNOWN].size(), 1U);
+    BOOST_CHECK_EQUAL(available_coins.Size(), 100U); // ITCOIN_SPECIFIC: it was 1.
+    BOOST_CHECK_EQUAL(available_coins.coins[OutputType::UNKNOWN].size(), 100U); // ITCOIN_SPECIFIC: it was 1.
 
     // We will create a self transfer for each of the OutputTypes and
     // verify it is put in the correct bucket after running GetAvailablecoins
