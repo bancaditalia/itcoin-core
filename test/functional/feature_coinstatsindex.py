@@ -145,6 +145,7 @@ class CoinStatsIndexTest(BitcoinTestFramework):
             self.block_sanity_check(res5['block_info'])
 
         # Generate and send a normal tx with two outputs
+        # ITCOIN_SPECIFIC: this transaction will spend an output in block 2 having value = 49.9996880 BTC producing change value of 28.99967800 BTC
         tx1_txid, tx1_vout = self.wallet.send_to(
             from_node=node,
             scriptPubKey=self.wallet.get_scriptPubKey(),
@@ -169,8 +170,8 @@ class CoinStatsIndexTest(BitcoinTestFramework):
             assert_equal(res6['total_unspendable_amount'], Decimal('70.99000000'))
             assert_equal(res6['block_info'], {
                 'unspendable': Decimal('20.99000000'),
-                'prevout_spent': Decimal('111.00004440'),  # ITCOIN_SPECIFIC: it was 71, TODO: UPDATE THE VALUE
-                'new_outputs_ex_coinbase': Decimal('89.99998060'),  # ITCOIN_SPECIFIC: it was Decimal('50.01001000'), TODO: UPDATE THE VALUE
+                'prevout_spent': Decimal('70.99968800'),  # ITCOIN_SPECIFIC: it was 71, now is 49.9996880 + 21
+                'new_outputs_ex_coinbase': Decimal('49.99967800'),  # ITCOIN_SPECIFIC: it was Decimal('50.01001000'), now is 28.99967800 + 21
                 'coinbase': Decimal('50.01001000'),
                 'unspendables': {
                     'genesis_block': Decimal('0E-8'),  # ITCOIN_SPECIFIC: it was 0
