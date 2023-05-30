@@ -44,6 +44,14 @@ INTERNAL_CONFIG_DIR="/opt/itcoin-core/configdir"
 INTERNAL_DATADIR="/opt/itcoin-core/datadir"
 
 usage() {
+	# The shellcheck warning SC2046 is:
+	#     $(printf "    - %s\n" $(ls -1 /usr/local/bin))
+	#                           ^---------------------^ SC2046 (warning): Quote this to prevent word splitting.
+	#
+	# But in this case we want it to perform word splitting, so that the printf
+	# can generate a bullet list of available commands.
+	#
+	#shellcheck disable=SC2046
 	cat <<-USAGE
 	USAGE:
 

@@ -75,6 +75,16 @@ errecho "Using itcoin docker image ${ITCOIN_IMAGE}"
 # "--publish" parameter fails if the same port is given multiple times.
 # Thus we have to remove duplicates from the set of ZMQ_XXX_PORT variables.
 declare -a ZMQ_PARAMS
+
+# SC2046 shellcheck warning is:
+#
+#     done <<<$(printf '%s\n' "${ZMQ_PUBHASHTX_PORT}" "${ZMQ_PUBRAWBLOCK_PORT}" "${ZMQ_PUBITCOINBLOCK_PORT}" | sort | uniq )
+#             ^-- SC2046 (warning): Quote this to prevent word splitting.
+#
+# But our goal is exactly generating multiple lines via the printf call via word
+# splitting.
+#
+#shellcheck disable=SC2046
 while IFS= read -r ZMQ_PORT; do
     ZMQ_PARAMS+=("--publish" "${ZMQ_PORT}:${ZMQ_PORT}")
 done <<<$(printf '%s\n' "${ZMQ_PUBHASHTX_PORT}" "${ZMQ_PUBRAWBLOCK_PORT}" "${ZMQ_PUBITCOINBLOCK_PORT}" | sort | uniq )
