@@ -121,7 +121,6 @@ generateConfigFile() {
 waitForBitcoind() {
 	local TIMEOUT=5
 	local MAX_ATTEMPTS=3
-	local INITIAL_WAIT=1
 
 	local N=0
 	until [ "$N" -ge "${MAX_ATTEMPTS}" ]; do
