@@ -35,7 +35,7 @@ elif [ -d "${CANDIDATE_REPO_ROOT}/.hg" ]; then
     # we are in a mercurial repository, let's use mercurial for computing the
     # hash of the current working copy
     REPO_TYPE="hg"
-    GIT_HASH=$(HGPLAIN= hg log --repository "${CANDIDATE_REPO_ROOT}" -r . --template '{gitnode|short}\n')
+    GIT_HASH=$(HGPLAIN="" hg log --repository "${CANDIDATE_REPO_ROOT}" -r . --template '{gitnode|short}\n')
 else
     errecho "ERROR: the directory ${CANDIDATE_REPO_ROOT} does not appear to be a git or mercurial repository"
     exit 1
