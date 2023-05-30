@@ -70,8 +70,9 @@ MINER="${PATH_TO_BINARIES}/miner"
 
 INIT_DATA=$("${MYDIR}/create-initdata.sh")
 
-export BLOCKSCRIPT=$(echo "${INIT_DATA}" | jq --raw-output '.blockscript')
-DESCRIPTORS=$(echo        "${INIT_DATA}" | jq --raw-output '.descriptors')
+BLOCKSCRIPT=$(echo "${INIT_DATA}" | jq --raw-output '.blockscript')
+DESCRIPTORS=$(echo "${INIT_DATA}" | jq --raw-output '.descriptors')
+export BLOCKSCRIPT
 
 errecho "Creating datadir ${DATADIR}. If it already exists this script will fail"
 mkdir "${DATADIR}"
