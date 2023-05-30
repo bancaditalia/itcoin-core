@@ -123,7 +123,7 @@ computeScriptPubKey() {
     SCRIPTPUBKEY=$("${PATH_TO_BINARIES}"/bitcoin-cli -datadir="${TMPDIR}" -regtest getaddressinfo "${TMPADDR}" | jq --raw-output '.scriptPubKey')
     # in our example: 51209a955d04fa1e5819b3e206752793566a1cf14facfbf83b2564fa2a4a4c4daa8b
 
-    echo ${SCRIPTPUBKEY}
+    echo "${SCRIPTPUBKEY}"
 } # computeScriptPubKey()
 
 # Automatically stop the container (wich will also self-remove at script exit
@@ -168,7 +168,7 @@ TR_DESCRIPTORS=$("${PATH_TO_BINARIES}"/bitcoin-cli -datadir="${TMPDIR}" -regtest
 # 1 (the so called "internal chain"). We decide to use the internal chain for
 # coinbase transaction as the miner is sending money to itself, rather than
 # receiving it from third parties.
-TR_CHANGE_DESCRIPTOR=$(echo ${TR_DESCRIPTORS} | jq --raw-output '.[] | select(.desc | contains("/1/*")) | .desc')
+TR_CHANGE_DESCRIPTOR=$(echo "${TR_DESCRIPTORS}" | jq --raw-output '.[] | select(.desc | contains("/1/*")) | .desc')
 # in our example: tr(tprv8ZgxMBicQKsPfP82yMAwmNZaiUkRfQiZgD9qofxjyA7ief44zuyymko2sSeH2E1YPTDjF9XFyGZJkgvVJKoSqtVuY41RoUueHkPNLTfre29/86'/1'/0'/1/*)#z7q0y40v
 {
   read -r BLOCKSCRIPT
