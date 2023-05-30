@@ -23,7 +23,7 @@ set -eu
 # https://stackoverflow.com/questions/59895/how-to-get-the-source-directory-of-a-bash-script-from-within-the-script-itself#246128
 MY_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-if [[ ! -z "${CC-}" ]]; then
+if [[ -n "${CC-}" ]]; then
     # The user requested a custom C compiler. Let's also set CC_FOR_BUILD to the
     # same value, otherwise secp256k1 does not passes the configure step (tested
     # on itcoin v0.21.x, Fedora 36, gcc 12.1).
