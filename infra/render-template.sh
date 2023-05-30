@@ -63,6 +63,11 @@ for VAR_NAME in "${@}"; do
 done
 
 # https://unix.stackexchange.com/questions/294378/replacing-only-specific-variables-with-envsubst/294400#294400
+#
+# SC2016 is "Expressions don't expand in single quotes, use double quotes for
+# that" (https://www.shellcheck.net/wiki/SC2016), but we do not want to expand
+# anything here.
+# shellcheck disable=SC2016
 VARIABLES_TO_BE_RENDERED=$(printf '${%s} \n' "${@}")
 
 envsubst "${VARIABLES_TO_BE_RENDERED}" #< bitcoin.conf.tmpl
