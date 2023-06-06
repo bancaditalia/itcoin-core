@@ -9,10 +9,15 @@
 #include <consensus/validation.h> // ITCOIN_SPECIFIC
 #include <hash.h>
 #include <signet.h> // ITCOIN_SPECIFIC
+#include <script/script.h>
+#include <serialize.h>
 #include <tinyformat.h>
+#include <uint256.h>
 #include <util/strencodings.h>
+#include <version.h>
 
-#include <assert.h>
+#include <cassert>
+#include <stdexcept>
 
 std::string COutPoint::ToString() const
 {
