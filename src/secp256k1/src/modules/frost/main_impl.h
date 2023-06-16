@@ -11,7 +11,11 @@
 #include "../../../include/secp256k1.h"
 #include "../../../include/secp256k1_frost.h"
 
-static const unsigned char hash_context_prefix[26] = "FROST-secp256k1-SHA256-v11";
+static const unsigned char hash_context_prefix_h1[29] = "FROST-secp256k1-SHA256-v11rho";
+static const unsigned char hash_context_prefix_h3[31] = "FROST-secp256k1-SHA256-v11nonce";
+static const unsigned char hash_context_prefix_h4[29] = "FROST-secp256k1-SHA256-v11msg";
+static const unsigned char hash_context_prefix_h5[29] = "FROST-secp256k1-SHA256-v11com";
+
 #define SCALAR_SIZE (32U)
 #define SHA256_SIZE (32U)
 #define SERIALIZED_PUBKEY_X_ONLY_SIZE (32U)
@@ -53,6 +57,10 @@ static void secp256k1_ge_set_gej_safe(secp256k1_ge *r, const secp256k1_gej *a) {
 
 static void secp256k1_gej_mul_scalar(secp256k1_gej *result, const secp256k1_gej *pt, const secp256k1_scalar *sc) {
     secp256k1_ge pt_ge;
+    if (secp256k1_gej_is_infinity(pt)) {
+        secp256k1_gej_set_infinity(result);
+        return;
+    }
     secp256k1_ge_set_gej_safe(&pt_ge, pt);
     secp256k1_ecmult_const(result, &pt_ge, sc, ECMULT_CONST_256_BIT_SIZE);
 }
@@ -122,7 +130,9 @@ static SECP256K1_WARN_UNUSED_RESULT int deserialize_frost_signature(secp256k1_fr
     secp256k1_fe x;
     secp256k1_ge deserialized_point;
     secp256k1_fe_set_b32(&x, serialized_signature);
-    secp256k1_ge_set_xo_var(&deserialized_point, &x, 0);
+    if (secp256k1_ge_set_xo_var(&deserialized_point, &x, 0) == 0) {
+        return 0;
+    }
     secp256k1_gej_set_ge(&(signature->r), &deserialized_point);
     if (convert_b32_to_scalar(&serialized_signature[SERIALIZED_PUBKEY_X_ONLY_SIZE], &(signature->z)) == 0) {
         return 0;
@@ -146,67 +156,56 @@ static SECP256K1_WARN_UNUSED_RESULT int initialize_random_scalar(secp256k1_scala
     return 1;
 }
 
-static void compute_sha256(const unsigned char *msg, uint32_t msg_len, unsigned char *hash_value) {
-    secp256k1_sha256 sha;
-    secp256k1_sha256_initialize(&sha);
-    secp256k1_sha256_write(&sha, msg, msg_len);
-    secp256k1_sha256_finalize(&sha, hash_value);
-}
-
-static void compute_hash_with_prefix(const unsigned char *prefix, uint32_t prefix_len,
-                                     const unsigned char *msg, uint32_t msg_len, unsigned char *hash_value) {
-    uint32_t ext_msg_len = prefix_len + msg_len;
-    unsigned char *ext_msg = (unsigned char *) checked_malloc(&default_error_callback, ext_msg_len);
-    memcpy(ext_msg, prefix, prefix_len);
-    memcpy(ext_msg + prefix_len, msg, msg_len);
-    compute_sha256(ext_msg, ext_msg_len, hash_value);
-    if (ext_msg != NULL) {
-        free(ext_msg);
-    }
-}
-
 static void compute_hash_h1(const unsigned char *msg, uint32_t msg_len, unsigned char *hash_value) {
     /* TODO: replace with hash-to-curve
     * H1(m): Implemented using hash_to_field from [HASH-TO-CURVE], Section 5.3 using L = 48,
-    * expand_message_xmd with SHA-256, DST = contextString || "rho", and prime modulus equal to Order(). */
-    unsigned char prefix[26 + 3];
-    memcpy(prefix, hash_context_prefix, 26);
-    memcpy(prefix + 26, "rho", 3);
-    compute_hash_with_prefix(prefix, sizeof prefix, msg, msg_len, hash_value);
+    * expand_message_xmd with SHA-256, DST = "FROST-secp256k1-SHA256-v11" || "rho", and prime modulus equal to Order(). */
+    secp256k1_sha256 sha;
+    secp256k1_sha256_initialize(&sha);
+    secp256k1_sha256_write(&sha, hash_context_prefix_h1, sizeof(hash_context_prefix_h1));
+    secp256k1_sha256_write(&sha, msg, msg_len);
+    secp256k1_sha256_finalize(&sha, hash_value);
 }
 
 static void compute_hash_h2(const unsigned char *msg, uint32_t msg_len, unsigned char *hash_value) {
     /* TODO: replace with hash-to-curve
     * H2(m): Implemented using hash_to_field from [HASH-TO-CURVE], Section 5.2 using L = 48,
-    * expand_message_xmd with SHA-256, DST = contextString || "chal", and prime modulus equal to Order().*/
+    * expand_message_xmd with SHA-256, DST = "FROST-secp256k1-SHA256-v11" || "chal", and prime modulus equal to Order().*/
     const unsigned char prefix[17] = "BIP0340/challenge";
-    compute_hash_with_prefix(prefix, sizeof prefix, msg, msg_len, hash_value);
+    secp256k1_sha256 sha;
+    secp256k1_sha256_initialize(&sha);
+    secp256k1_sha256_write(&sha, prefix, sizeof(prefix));
+    secp256k1_sha256_write(&sha, msg, msg_len);
+    secp256k1_sha256_finalize(&sha, hash_value);
 }
 
 static void compute_hash_h3(const unsigned char *msg, uint32_t msg_len, unsigned char *hash_value) {
     /* TODO: replace with hash-to-curve
     * H3(m): Implemented using hash_to_field from [HASH-TO-CURVE], Section 5.2 using L = 48,
-    * expand_message_xmd with SHA-256, DST = contextString || "nonce", and prime modulus equal to Order(). */
-    unsigned char prefix[26 + 5];
-    memcpy(prefix, hash_context_prefix, 26);
-    memcpy(prefix + 26, "nonce", 5);
-    compute_hash_with_prefix(prefix, sizeof prefix, msg, msg_len, hash_value);
+    * expand_message_xmd with SHA-256, DST = "FROST-secp256k1-SHA256-v11" || "nonce", and prime modulus equal to Order(). */
+    secp256k1_sha256 sha;
+    secp256k1_sha256_initialize(&sha);
+    secp256k1_sha256_write(&sha, hash_context_prefix_h3, sizeof(hash_context_prefix_h3));
+    secp256k1_sha256_write(&sha, msg, msg_len);
+    secp256k1_sha256_finalize(&sha, hash_value);
 }
 
 static void compute_hash_h4(const unsigned char *msg, uint32_t msg_len, unsigned char *hash_value) {
-    /* H4(m): Implemented by computing H(contextString || "msg" || m). */
-    unsigned char prefix[26 + 3];
-    memcpy(prefix, hash_context_prefix, 26);
-    memcpy(prefix + 26, "msg", 3);
-    compute_hash_with_prefix(prefix, sizeof prefix, msg, msg_len, hash_value);
+    /* H4(m): Implemented by computing H("FROST-secp256k1-SHA256-v11" || "msg" || m). */
+    secp256k1_sha256 sha;
+    secp256k1_sha256_initialize(&sha);
+    secp256k1_sha256_write(&sha, hash_context_prefix_h4, sizeof(hash_context_prefix_h4));
+    secp256k1_sha256_write(&sha, msg, msg_len);
+    secp256k1_sha256_finalize(&sha, hash_value);
 }
 
 static void compute_hash_h5(const unsigned char *msg, uint32_t msg_len, unsigned char *hash_value) {
-    /* H5(m): Implemented by computing H(contextString || "com" || m */
-    unsigned char prefix[26 + 3];
-    memcpy(prefix, hash_context_prefix, 26);
-    memcpy(prefix + 26, "com", 3);
-    compute_hash_with_prefix(prefix, sizeof prefix, msg, msg_len, hash_value);
+    /* H5(m): Implemented by computing H("FROST-secp256k1-SHA256-v11" || "com" || m). */
+    secp256k1_sha256 sha;
+    secp256k1_sha256_initialize(&sha);
+    secp256k1_sha256_write(&sha, hash_context_prefix_h5, sizeof(hash_context_prefix_h5));
+    secp256k1_sha256_write(&sha, msg, msg_len);
+    secp256k1_sha256_finalize(&sha, hash_value);
 }
 
 static void nonce_generate(unsigned char *out32, const secp256k1_frost_keypair *keypair,
@@ -231,6 +230,13 @@ static int secp256k1_frost_expand_compact_pubkey(unsigned char *pubkey64,
     secp256k1_fe_get_b32(pubkey64, &elem.x);
     secp256k1_fe_get_b32(pubkey64 + SERIALIZED_PUBKEY_X_ONLY_SIZE, &elem.y);
     return 1;
+}
+
+static void free_binding_factors(secp256k1_frost_binding_factors *binding_factors) {
+    /* Free all allocated vars */
+    free(binding_factors->binding_factors);
+    free(binding_factors->binding_factors_inputs);
+    free(binding_factors->participant_indexes);
 }
 
 SECP256K1_API int secp256k1_frost_pubkey_load(secp256k1_frost_pubkey *pubkey,
@@ -277,7 +283,7 @@ SECP256K1_API int secp256k1_frost_pubkey_save(unsigned char *pubkey33,
 
     pk.infinity = 0;
     /*
-     * 0 is a purposedly illegal value. We will verify that
+     * 0 is a purposely illegal value. We will verify that
      * secp256k1_eckey_pubkey_serialize() sets it to 33
      */
     size = 0;
@@ -298,7 +304,7 @@ SECP256K1_API int secp256k1_frost_pubkey_save(unsigned char *pubkey33,
 
     gpk.infinity = 0;
     /*
-     * 0 is a purposedly illegal value. We will verify that
+     * 0 is a purposely illegal value. We will verify that
      * secp256k1_eckey_pubkey_serialize() sets it to 33
      */
     size = 0;
@@ -322,10 +328,6 @@ SECP256K1_API secp256k1_frost_vss_commitments *secp256k1_frost_vss_commitments_c
     num_coefficients = threshold - 1;
     vss = (secp256k1_frost_vss_commitments *) checked_malloc(&default_error_callback,
                                                              sizeof(secp256k1_frost_vss_commitments));
-    if (EXPECT(vss == NULL, 0)) {
-        free(vss);
-        return NULL;
-    }
     vss->index = 0;
     memset(vss->zkp_z, 0, SCALAR_SIZE);
     memset(vss->zkp_r, 0, 64);
@@ -354,10 +356,6 @@ static SECP256K1_WARN_UNUSED_RESULT shamir_coefficients *shamir_coefficients_cre
     shamir_coefficients *s;
     s = (shamir_coefficients *) checked_malloc(&default_error_callback,
                                                sizeof(shamir_coefficients));
-    if (EXPECT(s == NULL, 0)) {
-        free(s);
-        return NULL;
-    }
     s->index = 0;
     s->num_coefficients = num_coefficients;
     s->coefficients = (secp256k1_scalar *)
@@ -584,6 +582,7 @@ static SECP256K1_WARN_UNUSED_RESULT int generate_dkg_challenge(secp256k1_scalar 
     uint32_t challenge_input_length;
     unsigned char *challenge_input;
     unsigned char hash_value[SHA256_SIZE];
+    secp256k1_sha256 sha;
 
     /* challenge_input = commitment || pk || index || context_nonce */
     challenge_input_length = SERIALIZED_PUBKEY_X_ONLY_SIZE + SERIALIZED_PUBKEY_X_ONLY_SIZE + SCALAR_SIZE + nonce_length;
@@ -596,7 +595,10 @@ static SECP256K1_WARN_UNUSED_RESULT int generate_dkg_challenge(secp256k1_scalar 
            context_nonce, nonce_length);
 
     /* compute hash of the challenge_input */
-    compute_sha256(challenge_input, challenge_input_length, hash_value);
+    secp256k1_sha256_initialize(&sha);
+    secp256k1_sha256_write(&sha, challenge_input, challenge_input_length);
+    secp256k1_sha256_finalize(&sha, hash_value);
+
     /* save hash value as scalar (overflow ignored on purpose) */
     convert_b32_to_scalar(hash_value, challenge);
 
@@ -706,7 +708,7 @@ static SECP256K1_WARN_UNUSED_RESULT int verify_secret_share(const secp256k1_cont
 
     secp256k1_scalar_set_int(&x, share->receiver_index);
     secp256k1_scalar_set_int(&x_to_the_i, 1);
-    secp256k1_gej_clear(&result);
+    secp256k1_gej_set_infinity(&result);
     secp256k1_gej_mul_scalar(&result, &result, &x_to_the_i);
 
     for (index = 0; index < commitment->num_coefficients; index++) {
@@ -755,7 +757,7 @@ SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_frost_keygen_dkg_finali
     secp256k1_ecmult_gen(&ctx->ecmult_gen_ctx, &pubkey, &scalar_secret);
     serialize_point(&pubkey, keypair->public_keys.public_key);
 
-    secp256k1_gej_clear(&group_pubkey);
+    secp256k1_gej_set_infinity(&group_pubkey);
     secp256k1_scalar_set_int(&scalar_unit, 1);
     secp256k1_gej_mul_scalar(&group_pubkey,
                              &group_pubkey, &scalar_unit);
@@ -884,7 +886,7 @@ static SECP256K1_WARN_UNUSED_RESULT int compute_group_commitment(/* out */ secp2
     uint32_t index, inner_index;
 
     secp256k1_scalar_set_int(&scalar_unit, 1);
-    secp256k1_gej_clear(group_commitment);
+    secp256k1_gej_set_infinity(group_commitment);
     secp256k1_gej_mul_scalar(group_commitment, group_commitment, &scalar_unit);
 
     for (index = 0; index < num_signers; index++) {
@@ -906,7 +908,7 @@ static SECP256K1_WARN_UNUSED_RESULT int compute_group_commitment(/* out */ secp2
             return 0;
         }
 
-        secp256k1_gej_clear(&partial);
+        secp256k1_gej_set_infinity(&partial);
         secp256k1_gej_mul_scalar(&partial, &partial, &scalar_unit);
 
         /* group_commitment += commitment.d + (commitment.e * rho_i) */
@@ -994,12 +996,13 @@ static void encode_group_commitments(
 /* TODO: H4(msg) and H5(encoded_group_commitments) is the same for each participant; move in
  * compute_binding_factors */
 static void compute_binding_factor(
-        /* out */ unsigned char *rho_input,
         /* out */ secp256k1_scalar *binding_factor,
                   uint32_t index,
                   const unsigned char *msg, uint32_t msg_len,
                   uint32_t num_signers,
                   const secp256k1_frost_nonce_commitment *signing_commitments) {
+
+    unsigned char rho_input[SHA256_SIZE + SHA256_SIZE + SCALAR_SIZE] = {0};
 
     /* Compute H4 of message */
     unsigned char binding_factor_hash[SHA256_SIZE];
@@ -1016,6 +1019,8 @@ static void compute_binding_factor(
     encode_group_commitments(encoded_group_commitments, num_signers, signing_commitments);
     compute_hash_h5(encoded_group_commitments, encoded_group_commitments_size, &(rho_input[SHA256_SIZE]));
 
+    free(encoded_group_commitments);
+
     /* rho_input = msg_hash || encoded_commitment_hash || serialize_scalar(identifier) */
     serialize_scalar(index, &(rho_input[SHA256_SIZE + SHA256_SIZE]));
 
@@ -1024,8 +1029,6 @@ static void compute_binding_factor(
 
     /* Convert to scalar (overflow ignored on purpose) */
     convert_b32_to_scalar(binding_factor_hash, binding_factor);
-
-    free(encoded_group_commitments);
 }
 
 static SECP256K1_WARN_UNUSED_RESULT int compute_binding_factors(
@@ -1044,8 +1047,7 @@ static SECP256K1_WARN_UNUSED_RESULT int compute_binding_factors(
     signing_commitment_sort(signing_commitments, 0, ((int32_t) num_signers) - 1);
 
     for (index = 0; index < num_signers; index++) {
-        unsigned char rho_input[SHA256_SIZE + SHA256_SIZE + SCALAR_SIZE];
-        compute_binding_factor(rho_input, &(binding_factors->binding_factors[index]),
+        compute_binding_factor(&(binding_factors->binding_factors[index]),
                                signing_commitments[index].index, msg32, msg_len,
                                num_signers, signing_commitments);
 
@@ -1225,9 +1227,7 @@ SECP256K1_API int secp256k1_frost_sign(
     nonce->used = 1;
 
     /* Free all allocated vars */
-    free(binding_factors.binding_factors);
-    free(binding_factors.binding_factors_inputs); /*FIXME: also the allocated unsigned char *  to be freed */
-    free(binding_factors.participant_indexes);
+    free_binding_factors(&binding_factors); /*FIXME: also the allocated unsigned char *  to be freed */
 
     return 1;
 }
@@ -1355,13 +1355,6 @@ static SECP256K1_WARN_UNUSED_RESULT int verify_signature_share(const secp256k1_c
     return 1;
 }
 
-static void free_binding_factors(secp256k1_frost_binding_factors *binding_factors) {
-    /* Free all allocated vars */
-    free(binding_factors->binding_factors);
-    free(binding_factors->binding_factors_inputs);
-    free(binding_factors->participant_indexes);
-}
-
 SECP256K1_API int secp256k1_frost_aggregate(const secp256k1_context *ctx,
         /* out: */ unsigned char *sig64,
                                             const unsigned char *msg32,
@@ -1401,6 +1394,7 @@ SECP256K1_API int secp256k1_frost_aggregate(const secp256k1_context *ctx,
 
     /* Compute the binding factor(s) */
     if (compute_binding_factors(&binding_factors, msg32, 32, num_signers, commitments) == 0) {
+        free_binding_factors(&binding_factors);
         return 0;
     }
 
