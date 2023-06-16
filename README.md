@@ -13,7 +13,7 @@ The main changes w.r.t. bitcoin-core are:
 
 You can get started with **itcoin** by:
 - Setting up a basic network with a standalone miner following the instructions available in the [itcoin demo tutorial](/doc/itcoin-demo.md);
-- Setting up a sample distributed federation of 4 miners following the [distributed itcoin demo tutorial (coming soon!)](https://github.com/bancaditalia/itcoin-fbft).
+- Setting up a sample distributed federation of 4 miners following the [distributed itcoin demo tutorial](https://github.com/bancaditalia/itcoin-fbft).
 
 Please note that this software is solely intended for testing and experimentation purposes, and is not ready for use in a production environment: In its current form, it misses features — such as support for dynamic federations — that are crucial for any real-world deployment.
 
