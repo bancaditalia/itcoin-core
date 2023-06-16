@@ -6,6 +6,7 @@ AC_PREREQ([2.60])
 define(_PKG_VERSION_MAJOR, 0)
 define(_PKG_VERSION_MINOR, 1)
 define(_PKG_VERSION_BUILD, 0)
+define(_PKG_VERSION_FROST_BUILD, 1) # FROST_SPECIFIC: this field controls the final digit in the version identifier "MAJOR.MINOR.BUILD-frost-FROST_BUILD"
 define(_PKG_VERSION_IS_RELEASE, false)
 
 # The library version is based on libtool versioning of the ABI. The set of
@@ -17,7 +18,7 @@ define(_LIB_VERSION_CURRENT, 0)
 define(_LIB_VERSION_REVISION, 0)
 define(_LIB_VERSION_AGE, 0)
 
-AC_INIT([libsecp256k1],m4_join([.], _PKG_VERSION_MAJOR, _PKG_VERSION_MINOR, _PKG_VERSION_BUILD)m4_if(_PKG_VERSION_IS_RELEASE, [true], [], [-pre]),[https://github.com/bitcoin-core/secp256k1/issues],[libsecp256k1],[https://github.com/bitcoin-core/secp256k1])
+AC_INIT([libsecp256k1],m4_join([.], _PKG_VERSION_MAJOR, _PKG_VERSION_MINOR, _PKG_VERSION_BUILD)m4_if(_PKG_VERSION_IS_RELEASE, [true], [], [-pre])[-frost-]_PKG_VERSION_FROST_BUILD,[https://github.com/bancaditalia/secp256k1-frost/issues],[libsecp256k1],[https://github.com/bancaditalia/secp256k1-frost]) # FROST_SPECIFIC: added frost build number and replaced URIs with those of Bank of Italy's fork.
 
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([build-aux/m4])
@@ -158,9 +159,8 @@ AC_ARG_ENABLE(module_schnorrsig,
 
 # FROST_SPECIFIC - START
 AC_ARG_ENABLE(module_frost,
-    AS_HELP_STRING([--enable-module-frost],[enable FROST module (experimental)]),
-    [enable_module_frost=$enableval],
-    [enable_module_frost=no])
+    AS_HELP_STRING([--enable-module-frost],[enable FROST module (experimental) [default=no]]), [],
+    [SECP_SET_DEFAULT([enable_module_frost], [no], [yes])])
 # FROST_SPECIFIC - END
 
 AC_ARG_ENABLE(external_default_callbacks,
