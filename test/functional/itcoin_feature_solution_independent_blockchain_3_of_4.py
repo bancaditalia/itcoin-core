@@ -93,13 +93,13 @@ class SignetSignatureIndependentMerkleRootTest(BaseItcoinTest):
         self.assert_blockchaininfo_property_forall_nodes("bestblockhash", expected_bestblockhash)
 
         # Check a reorg did not occurr after the partition is resolved
-        assert(expected_bestblockhash == bestblockhash_before_connect)
+        assert_equal(expected_bestblockhash, bestblockhash_before_connect)
 
         #  but they kept the same different coinbase txs
         block3_coinbase_0 = self.nodes[0].getblock(self.nodes[0].getblockhash(3))["tx"][0]
         block3_coinbase_1 = self.nodes[1].getblock(self.nodes[1].getblockhash(3))["tx"][0]
         # The hash of the coinbase should be the same
-        assert(block3_coinbase_0 == block3_coinbase_1)
+        assert_equal(block3_coinbase_0, block3_coinbase_1)
         # The content of the coinbase should be different
         block3_hash = self.nodes[0].getblockhash(3)
         raw_tx_block3_coinbase_0 = self.nodes[0].getrawtransaction(block3_coinbase_0, True, block3_hash)["hex"]
@@ -110,7 +110,7 @@ class SignetSignatureIndependentMerkleRootTest(BaseItcoinTest):
         tx_block3_coinbase_1 = tx_from_hex(raw_tx_block3_coinbase_1)
         tx_block3_coinbase_0.vout[1].scriptPubKey = tx_block3_coinbase_0.vout[1].scriptPubKey[:40]
         tx_block3_coinbase_1.vout[1].scriptPubKey = tx_block3_coinbase_1.vout[1].scriptPubKey[:40]
-        assert( tx_block3_coinbase_0.serialize().hex() == tx_block3_coinbase_1.serialize().hex() )
+        assert_equal(tx_block3_coinbase_0.serialize().hex(), tx_block3_coinbase_1.serialize().hex())
 
         # Mine 4th block
         block = miner.do_generate_next_block(args0)[0]
