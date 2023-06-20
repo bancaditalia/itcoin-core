@@ -1,0 +1,76 @@
+name: Test itcoin-core
+
+on:
+  push:
+    branches:
+      - itcoin
+  pull_request:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  functional-tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Install the build toolchain (gcc-12)
+        run: |
+          sudo apt install --no-install-recommends -y \
+              autoconf \
+              automake \
+              bsdextrautils \
+              build-essential \
+              g++-12 \
+              libtool \
+              pkg-config
+      - name: Install the build and runtime dependencies
+        run: |
+          # python3-zmq is only used to allow the zmq functional tests to run
+          sudo apt install --no-install-recommends -y \
+              gettext-base \
+              jq \
+              libboost1.74-dev \
+              libboost-filesystem1.74-dev \
+              libboost-thread1.74-dev \
+              libdb5.3++-dev \
+              libevent-dev \
+              libsqlite3-dev \
+              libzmq3-dev \
+              python3 \
+              python3-zmq
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - name: Prepare the build
+        run: |
+          cd infra
+          CC=$(which gcc-12) CXX=$(which g++12) ./configure-itcoin-core-dev.sh
+      - name: build itcoin-core
+        run: |
+          cd infra
+          make -j 4
+          make install-strip
+      - name: Test local mining
+        run: |
+          cd infra
+          ./initialize-itcoin-local.sh 5
+          sleep 1
+          { STDOUT=$(timeout --kill-after=2 8 ./continue-mining-local.sh | tee /dev/fd/3 ); } 3>&1
+          # ensure that the last 2 lines are of this form:
+          #     2023-06-20 09:59:14 INFO Mined block at height 6; next in 7s (mine)
+          #     Itcoin Core stopping
+          LINE_LAST_BLOCK=$(echo "${STDOUT}" | tail -n 2 | head -n 1)
+          LINE_ITCOIN_CORE_STOPPING=$(echo "${STDOUT}" | tail -n 1)
+          if [[ "${LINE_LAST_BLOCK}" != *"INFO Mined block at height 6; next in"* ]]; then
+            echo "Wrong line: ${LINE_LAST_BLOCK}"
+            exit 1
+          fi
+          if [[ "${LINE_ITCOIN_CORE_STOPPING}" != "Itcoin Core stopping" ]]; then
+            echo "Wrong line: ${LINE_ITCOIN_CORE_STOPPING}"
+            exit 1
+          fi
+      - name: Run C++ tests
+        run: make check -j
+      - name: Run functional tests
+        run: |
+          cd test/functional
+          ./test_runner.py -j $(nproc)
