@@ -107,8 +107,14 @@ class SignetSignatureIndependentMerkleRootTest(BaseItcoinTest):
         # The content of the coinbase, once excluded the signet solution, should be the same
         tx_block3_coinbase_0 = tx_from_hex(raw_tx_block3_coinbase_0)
         tx_block3_coinbase_1 = tx_from_hex(raw_tx_block3_coinbase_1)
-        tx_block3_coinbase_0.vout[1].scriptPubKey = tx_block3_coinbase_0.vout[1].scriptPubKey[:40]
-        tx_block3_coinbase_1.vout[1].scriptPubKey = tx_block3_coinbase_1.vout[1].scriptPubKey[:40]
+        # To exclude the signet solution, take the first 38 bytes of the 2nd coinbase output
+        #   01 byte contains OP_RETURN (=6a hex) 
+        # + 01 byte contains the size of the PUSH_DATA (=24 hex) 
+        # + 04 bytes contain the WITNESS_COMMITMENT_HEADER (=aa21a9ed hex)
+        # + 32 bytes contain the witness commitment (sha256 of the segwit merkle root)
+        # = 38 bytes
+        tx_block3_coinbase_0.vout[1].scriptPubKey = tx_block3_coinbase_0.vout[1].scriptPubKey[:38]
+        tx_block3_coinbase_1.vout[1].scriptPubKey = tx_block3_coinbase_1.vout[1].scriptPubKey[:38]
         assert_equal(tx_block3_coinbase_0.serialize().hex(), tx_block3_coinbase_1.serialize().hex())
 
         # Mine 4th block
