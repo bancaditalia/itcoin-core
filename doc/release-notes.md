@@ -1,9 +1,9 @@
-23.2 Release Notes
+24.1 Release Notes
 ==================
 
-Bitcoin Core version 23.2 is now available from:
+Bitcoin Core version 24.1 is now available from:
 
-  <https://bitcoincore.org/bin/bitcoin-core-23.2/>
+  <https://bitcoincore.org/bin/bitcoin-core-24.1/>
 
 This release includes various bug fixes and performance
 improvements, as well as updated translations.
@@ -39,21 +39,40 @@ unsupported systems.
 
 ### P2P
 
+- #26878 I2P network optimizations
 - #26909 net: prevent peers.dat corruptions by only serializing once
 - #27608 p2p: Avoid prematurely clearing download state for other peers
 - #27610 Improve performance of p2p inv to send queues
 
-### Build system
+### RPC and other APIs
 
-- #25436 build: suppress array-bounds errors in libxkbcommon
-- #25763 bdb: disable Werror for format-security
+- #26515 rpc: Require NodeStateStats object in getpeerinfo
+- #27279 doc: fix/improve warning helps in {create,load,unload,restore}wallet
+- #27468 rest: avoid segfault for invalid URI
+
+### Build System
+
 - #26944 depends: fix systemtap download URL
 - #27462 depends: fix compiling bdb with clang-16 on aarch64
 
+### Wallet
+
+- #26595 wallet: be able to specify a wallet name and passphrase to migratewallet
+- #26675 wallet: For feebump, ignore abandoned descendant spends
+- #26679 wallet: Skip rescanning if wallet is more recent than tip
+- #26761 wallet: fully migrate address book entries for watchonly/solvable wallets
+- #27053 wallet: reuse change dest when re-creating TX with avoidpartialspends
+- #27080 wallet: Zero out wallet master key upon locking so it doesn't persist in memory
+- #27473 wallet: Properly handle "unknown" Address Type
+
+### GUI changes
+
+- gui#687 Load PSBTs using istreambuf_iterator rather than istream_iterator
+- gui#704 Correctly limit overview transaction list
+
 ### Miscellaneous
 
-- #25444 ci: macOS task imrovements
-- #26388 ci: Use macos-ventura-xcode:14.1 image for "macOS native" task
+- #26880 ci: replace Intel macOS CI job
 - #26924 refactor: Add missing includes to fix gcc-13 compile error
 
 Credits
@@ -61,12 +80,20 @@ Credits
 
 Thanks to everyone who directly contributed to this release:
 
+- Andrew Chow
 - Anthony Towns
 - Hennadii Stepanov
-- MacroFake
+- John Moffett
+- Jon Atack
+- Marco Falke
 - Martin Zumsande
+- Matthew Zipkin
 - Michael Ford
+- pablomartin4btc
+- Sebastian Falbesoner
 - Suhas Daftuar
+- Thomas Nguyen
+- Vasil Dimov
 
 As well as to everyone that helped with translations on
 [Transifex](https://www.transifex.com/bitcoin/bitcoin/).
