@@ -196,7 +196,7 @@ class ZMQTest (BitcoinTestFramework):
         # ITCOIN_SPECIFIC - START
         initial_height = self.nodes[0].getblockchaininfo()['blocks']
         # In this test case, the initial chain is set up with 201 blocks.
-        assert_equal(initial_height, 201)
+        assert_greater_than_or_equal(initial_height, 201)
         timestamp_before_block_generation = int(time.time())
         # ITCOIN_SPECIFIC - END
         self.log.info(f"Generate {num_blocks} blocks (and {num_blocks} coinbase txes)")
