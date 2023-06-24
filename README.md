@@ -1,6 +1,8 @@
 Itcoin Core
 =====================================
 
+[![tests](https://github.com/bancaditalia/itcoin-core/actions/workflows/test-itcoin-core.yml/badge.svg?branch=itcoin&event=push)](https://github.com/bancaditalia/itcoin-core/actions/workflows/test-itcoin-core.yml)
+
 This repository contains the implementation of an **itcoin** "*participant node*".
 You can find more information about the **itcoin** project at [the project web page](https://bancaditalia.github.io/itcoin).
 
