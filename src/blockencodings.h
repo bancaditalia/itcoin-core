@@ -136,7 +136,7 @@ public:
     CBlockHeader header;
 
     // Can be overridden for testing
-    using CheckBlockFn = std::function<bool(const CBlock&, BlockValidationState&, const Consensus::Params&, bool, bool)>;
+    using CheckBlockFn = std::function<bool(const CBlock&, BlockValidationState&, const Consensus::Params&, bool, bool, bool)>; // ITCOIN_SPECIFIC: added one more "bool" parameter to the signature, since validation.CheckBlock() in itcoin has an additional parameter fCheckSignetSolution
     CheckBlockFn m_check_block_mock{nullptr};
 
     explicit PartiallyDownloadedBlock(CTxMemPool* poolIn) : pool(poolIn) {}
