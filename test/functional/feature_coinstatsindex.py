@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2020-2021 The Bitcoin Core developers
+# Copyright (c) 2020-2022 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test coinstatsindex across nodes.
@@ -157,9 +157,10 @@ class CoinStatsIndexTest(BitcoinTestFramework):
 
         # Generate and send another tx with an OP_RETURN output (which is unspendable)
         tx2 = self.wallet.create_self_transfer(utxo_to_spend=tx1_out_21)['tx']
-        tx2.vout = [CTxOut(int(Decimal('20.99') * COIN), CScript([OP_RETURN] + [OP_FALSE] * 30))]
+        tx2_val = '20.99'
+        tx2.vout = [CTxOut(int(Decimal(tx2_val) * COIN), CScript([OP_RETURN] + [OP_FALSE] * 30))]
         tx2_hex = tx2.serialize().hex()
-        self.nodes[0].sendrawtransaction(tx2_hex)
+        self.nodes[0].sendrawtransaction(tx2_hex, 0, tx2_val)
 
         # Include both txs in a block
         self.generate(self.nodes[0], 1)
@@ -171,7 +172,7 @@ class CoinStatsIndexTest(BitcoinTestFramework):
             assert_equal(res6['block_info'], {
                 'unspendable': Decimal('20.99000000'),
                 'prevout_spent': Decimal('70.99968800'),  # ITCOIN_SPECIFIC: it was 71, now is 49.9996880 + 21
-                'new_outputs_ex_coinbase': Decimal('49.99967800'),  # ITCOIN_SPECIFIC: it was Decimal('50.01001000'), now is 28.99967800 + 21
+                'new_outputs_ex_coinbase': Decimal('49.99967800'),  # ITCOIN_SPECIFIC: it was 49.99999000 in v25.1rc1 and Decimal('50.01001000') in v24.1, now is 28.99967800 + 21
                 'coinbase': Decimal('50.01001000'),
                 'unspendables': {
                     'genesis_block': Decimal('0E-8'),  # ITCOIN_SPECIFIC: it was 0
@@ -222,7 +223,7 @@ class CoinStatsIndexTest(BitcoinTestFramework):
 
         self.generate(index_node, 1, sync_fun=self.no_op)
         res10 = index_node.gettxoutsetinfo('muhash')
-        assert(res8['txouts'] < res10['txouts'])
+        assert res8['txouts'] < res10['txouts']
 
         self.log.info("Test that the index works with -reindex")
 
@@ -269,12 +270,12 @@ class CoinStatsIndexTest(BitcoinTestFramework):
         res2 = index_node.gettxoutsetinfo(hash_type='muhash', hash_or_height=12) # ITCOIN_SPECIFIC: it was 112
         assert_equal(res["bestblock"], block)
         assert_equal(res["muhash"], res2["muhash"])
-        assert(res["muhash"] != res_invalid["muhash"])
+        assert res["muhash"] != res_invalid["muhash"]
 
         # Test that requesting reorged out block by hash is still returning correct results
         res_invalid2 = index_node.gettxoutsetinfo(hash_type='muhash', hash_or_height=reorg_block)
         assert_equal(res_invalid2["muhash"], res_invalid["muhash"])
-        assert(res["muhash"] != res_invalid2["muhash"])
+        assert res["muhash"] != res_invalid2["muhash"]
 
         # Add another block, so we don't depend on reconsiderblock remembering which
         # blocks were touched by invalidateblock

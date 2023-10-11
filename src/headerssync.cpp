@@ -7,6 +7,7 @@
 #include <pow.h>
 #include <timedata.h>
 #include <util/check.h>
+#include <util/vector.h>
 
 // The two constants below are computed using the simulation script on
 // https://gist.github.com/sipa/016ae445c132cdf65a2791534dfb7ae1
@@ -24,11 +25,11 @@ static_assert(sizeof(CompressedHeader) == 48);
 
 HeadersSyncState::HeadersSyncState(NodeId id, const Consensus::Params& consensus_params,
         const CBlockIndex* chain_start, const arith_uint256& minimum_required_work) :
+    m_commit_offset(GetRand<unsigned>(HEADER_COMMITMENT_PERIOD)),
     m_id(id), m_consensus_params(consensus_params),
     m_chain_start(chain_start),
     m_minimum_required_work(minimum_required_work),
     m_current_chain_work(chain_start->nChainWork),
-    m_commit_offset(GetRand<unsigned>(HEADER_COMMITMENT_PERIOD)),
     m_last_header_received(m_chain_start->GetBlockHeader()),
     m_current_height(chain_start->nHeight)
 {
@@ -51,9 +52,9 @@ HeadersSyncState::HeadersSyncState(NodeId id, const Consensus::Params& consensus
 void HeadersSyncState::Finalize()
 {
     Assume(m_download_state != State::FINAL);
-    m_header_commitments = {};
+    ClearShrink(m_header_commitments);
     m_last_header_received.SetNull();
-    m_redownloaded_headers = {};
+    ClearShrink(m_redownloaded_headers);
     m_redownload_buffer_last_hash.SetNull();
     m_redownload_buffer_first_prev_hash.SetNull();
     m_process_all_remaining_headers = false;

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-# Copyright (c) 2015-2021 The Bitcoin Core developers
+# Copyright (c) 2015-2022 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test the ZMQ notification interface."""
 import struct
-import time  # ITCOIN_SPECIFIC
+from time import sleep
+# ITCOIN_SPECIFIC: in v24.1 there was a plain "import time"
 
 from test_framework.address import (
     ADDRESS_BCRT1_P2WSH_OP_TRUE,
@@ -17,20 +18,19 @@ from test_framework.blocktools import (
 )
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.messages import (
-    CTransaction,
     hash256,
+    tx_from_hex,
 )
 from test_framework.util import (
     assert_equal,
     assert_greater_than_or_equal,  # ITCOIN_SPECIFIC
     assert_raises_rpc_error,
+    p2p_port,
 )
 from test_framework.wallet import (
     MiniWallet,
 )
 from test_framework.netutil import test_ipv6_local
-from io import BytesIO
-from time import sleep
 from test_framework.test_framework_itcoin import MsgItcoinblock  # ITCOIN_SPECIFIC
 
 # Test may be skipped and not have zmq installed
@@ -110,6 +110,7 @@ class ZMQTest (BitcoinTestFramework):
         # This test isn't testing txn relay/timing, so set whitelist on the
         # peers for instant txn relay. This speeds up the test run time 2-3x.
         self.extra_args = [["-whitelist=noban@127.0.0.1"]] * self.num_nodes
+        self.zmq_port_base = p2p_port(self.num_nodes + 1)
 
     def skip_test_if_missing_module(self):
         self.skip_if_no_py3_zmq()
@@ -183,7 +184,7 @@ class ZMQTest (BitcoinTestFramework):
         # Invalid zmq arguments don't take down the node, see #17185.
         self.restart_node(0, ["-zmqpubrawtx=foo", "-zmqpubhashtx=bar"])
 
-        address = 'tcp://127.0.0.1:28332'
+        address = f"tcp://127.0.0.1:{self.zmq_port_base}"
         subs = self.setup_zmq_test([(topic, address) for topic in ["hashblock", "hashtx", "rawblock", "rawtx", "itcoinblock"]])  # ITCOIN_SPECIFIC: added "itcoinblock"
 
         hashblock = subs[0]
@@ -197,20 +198,18 @@ class ZMQTest (BitcoinTestFramework):
         initial_height = self.nodes[0].getblockchaininfo()['blocks']
         # In this test case, the initial chain is set up with 201 blocks or more
         assert_greater_than_or_equal(initial_height, 201)
-        timestamp_before_block_generation = int(time.time())
+        timestamp_before_block_generation = int(time.time())  # ITCOIN_SPECIFIC: in v25.1rc1 time.time non si può più fare
         # ITCOIN_SPECIFIC - END
         self.log.info(f"Generate {num_blocks} blocks (and {num_blocks} coinbase txes)")
         genhashes = self.generatetoaddress(self.nodes[0], num_blocks, ADDRESS_BCRT1_UNSPENDABLE)
-        timestamp_after_block_generation = int(time.time())  # ITCOIN_SPECIFIC
+        timestamp_after_block_generation = int(time.time())  # ITCOIN_SPECIFIC: in v25.1rc1 time.time non si può più fare
 
         for x in range(num_blocks):
             # Should receive the coinbase txid.
             txid = hashtx.receive()
 
             # Should receive the coinbase raw transaction.
-            hex = rawtx.receive()
-            tx = CTransaction()
-            tx.deserialize(BytesIO(hex))
+            tx = tx_from_hex(rawtx.receive().hex())
             tx.calc_sha256()
             assert_equal(tx.hash, txid.hex())
 
@@ -242,7 +241,6 @@ class ZMQTest (BitcoinTestFramework):
             previous_ntime = msg_itcoinblock.nTime
             # ITCOIN_SPECIFIC - END
 
-        self.wallet.rescan_utxos()
         self.log.info("Wait for tx from second node")
         payment_tx = self.wallet.send_self_transfer(from_node=self.nodes[1])
         payment_txid = payment_tx['txid']
@@ -276,7 +274,7 @@ class ZMQTest (BitcoinTestFramework):
 
     def test_reorg(self):
 
-        address = 'tcp://127.0.0.1:28333'
+        address = f"tcp://127.0.0.1:{self.zmq_port_base}"
 
         # Should only notify the tip if a reorg occurs
         hashblock, hashtx = self.setup_zmq_test(
@@ -330,7 +328,7 @@ class ZMQTest (BitcoinTestFramework):
         <32-byte hash>A<8-byte LE uint> : Transactionhash added mempool
         """
         self.log.info("Testing 'sequence' publisher")
-        [seq] = self.setup_zmq_test([("sequence", "tcp://127.0.0.1:28333")])
+        [seq] = self.setup_zmq_test([("sequence", f"tcp://127.0.0.1:{self.zmq_port_base}")])
         self.disconnect_nodes(0, 1)
 
         # Mempool sequence number starts at 1
@@ -474,7 +472,7 @@ class ZMQTest (BitcoinTestFramework):
         """
 
         self.log.info("Testing 'mempool sync' usage of sequence notifier")
-        [seq] = self.setup_zmq_test([("sequence", "tcp://127.0.0.1:28333")])
+        [seq] = self.setup_zmq_test([("sequence", f"tcp://127.0.0.1:{self.zmq_port_base}")])
 
         # In-memory counter, should always start at 1
         next_mempool_seq = self.nodes[0].getrawmempool(mempool_sequence=True)["mempool_sequence"]
@@ -579,8 +577,8 @@ class ZMQTest (BitcoinTestFramework):
         # chain lengths on node0 and node1; for this test we only need node0, so
         # we can disable syncing blocks on the setup)
         subscribers = self.setup_zmq_test([
-            ("hashblock", "tcp://127.0.0.1:28334"),
-            ("hashblock", "tcp://127.0.0.1:28335"),
+            ("hashblock", f"tcp://127.0.0.1:{self.zmq_port_base + 1}"),
+            ("hashblock", f"tcp://127.0.0.1:{self.zmq_port_base + 2}"),
         ], sync_blocks=False)
 
         # Generate 1 block in nodes[0] and receive all notifications
@@ -597,7 +595,7 @@ class ZMQTest (BitcoinTestFramework):
         self.log.info("Testing IPv6")
         # Set up subscriber using IPv6 loopback address
         subscribers = self.setup_zmq_test([
-            ("hashblock", "tcp://[::1]:28332")
+            ("hashblock", f"tcp://[::1]:{self.zmq_port_base}")
         ], ipv6=True)
 
         # Generate 1 block in nodes[0]
