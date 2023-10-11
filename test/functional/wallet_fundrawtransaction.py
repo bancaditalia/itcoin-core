@@ -638,7 +638,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         self.generate(self.nodes[1], 1)
 
         # Make sure funds are received at node1.
-        assert_equal(oldBalance+Decimal('51.10000000'), self.nodes[0].getbalance())
+        assert_equal(oldBalance+Decimal('1.10000000'), self.nodes[0].getbalance())  # ITCOIN_SPECIFIC: it was Decimal('51.10000000'): with COINBASE_MATURITY=0, no new matured reward at node0, subtract 50 from expected balance
 
     def test_many_inputs_fee(self):
         """Multiple (~19) inputs tx test | Compare fee."""
@@ -646,7 +646,14 @@ class RawTransactionsTest(BitcoinTestFramework):
 
         # Empty node1, send some small coins from node0 to node1.
         self.nodes[1].sendall(recipients=[self.nodes[0].getnewaddress()])
-        self.generate(self.nodes[1], 1)
+        # ITCOIN_SPECIFIC - START
+        #
+        # At the end of the sendtoaddress, there should be no UTXO left at
+        # node1. Hence, we sync the mempools and let node0 mine the block, so
+        # that node1 does not get any reward.
+        self.sync_mempools()  # ITCOIN_SPECIFIC: added this line
+        self.generate(self.nodes[0], 1)  # ITCOIN_SPECIFIC: it was self.nodes[1]
+        # ITCOIN_SPECIFIC - END
 
         for _ in range(20):
             self.nodes[0].sendtoaddress(self.nodes[1].getnewaddress(), 0.01)
