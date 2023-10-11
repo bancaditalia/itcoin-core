@@ -74,6 +74,11 @@ public:
     CMainParams() {
         strNetworkID = CBaseChainParams::MAIN;
         consensus.signet_blocks = false;
+
+        // ITCOIN_SPECIFIC START
+        consensus.allow_any_block_subsidy = true;
+        // ITCOIN_SPECIFIC END
+
         consensus.signet_challenge.clear();
         consensus.nSubsidyHalvingInterval = 210000;
         consensus.script_flag_exceptions.emplace( // BIP16 exception
@@ -196,6 +201,11 @@ public:
     CTestNetParams() {
         strNetworkID = CBaseChainParams::TESTNET;
         consensus.signet_blocks = false;
+
+        // ITCOIN_SPECIFIC START
+        consensus.allow_any_block_subsidy = true;
+        // ITCOIN_SPECIFIC END
+
         consensus.signet_challenge.clear();
         consensus.nSubsidyHalvingInterval = 210000;
         consensus.script_flag_exceptions.emplace( // BIP16 exception
@@ -332,6 +342,11 @@ public:
 
         strNetworkID = CBaseChainParams::SIGNET;
         consensus.signet_blocks = true;
+
+        // ITCOIN_SPECIFIC START
+        consensus.allow_any_block_subsidy = true;
+        // ITCOIN_SPECIFIC END
+
         consensus.signet_challenge.assign(bin.begin(), bin.end());
         consensus.nSubsidyHalvingInterval = 210000;
         consensus.BIP34Height = 1;
@@ -340,14 +355,37 @@ public:
         consensus.BIP66Height = 1;
         consensus.CSVHeight = 1;
         consensus.SegwitHeight = 1;
-        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
-        consensus.nPowTargetSpacing = 10 * 60;
+
+        // ITCOIN_SPECIFIC START
+        consensus.nPowTargetTimespan = 24 * 60 * 60; // every day
+        consensus.nPowTargetSpacing = 60; // one minute
+        // ITCOIN_SPECIFIC END
+
         consensus.fPowAllowMinDifficultyBlocks = false;
-        consensus.fPowNoRetargeting = false;
+        consensus.fPowNoRetargeting = true; // ITCOIN_SPECIFIC
         consensus.nRuleChangeActivationThreshold = 1815; // 90% of 2016
+
+        /* ITCOIN_SPECIFIC
+         *
+         * 2020-12-02: we'll continue to use 2016 for nMinerConfirmationWindow
+         * and 1916 for nRuleChangeActivationThreshold (the same value used in
+         * the bitcoin codebase), even if the formulae in the comments are no
+         * longer valid.
+         *
+         * nMinerConfirmationWindow is used in soft-fork consensus updates [0]:
+         * nodes need to wait 1916 blocks (nRuleChangeActivationThreshold) out
+         * of the 2016 window are mined with the "I am supporting the update"
+         * flag active.
+         *
+         * Provided that in itcoin 1 block is mined every minute, this means
+         * that an update can be introduced in at most 2 days, even keeping 1916
+         * and 2016. This is is fast enough.
+         *
+         * [0] https://github.com/bitcoin/bips/blob/master/bip-0009.mediawiki
+         */
         consensus.nMinerConfirmationWindow = 2016; // nPowTargetTimespan / nPowTargetSpacing
         consensus.MinBIP9WarningHeight = 0;
-        consensus.powLimit = uint256S("00000377ae000000000000000000000000000000000000000000000000000000");
+        consensus.powLimit = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"); // ITCOIN_SPECIFIC: same as regtest
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit = 28;
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nStartTime = Consensus::BIP9Deployment::NEVER_ACTIVE;
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nTimeout = Consensus::BIP9Deployment::NO_TIMEOUT;
@@ -368,9 +406,9 @@ public:
         nDefaultPort = 38333;
         nPruneAfterHeight = 1000;
 
-        genesis = CreateGenesisBlock(1598918400, 52613770, 0x1e0377ae, 1, 50 * COIN);
+        genesis = CreateGenesisBlock(1598918400, 0, 0x207fffff, 1, 50 * COIN); // ITCOIN_SPECIFIC: same nBits as regtest and nNonce adapted consequently
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x00000008819873e925422c1ff0f99f7cc9bbb232af63a077a480a3633bee1ef6"));
+        assert(consensus.hashGenesisBlock == uint256S("0x49dc109285f9a914c1d16a6b03bb139ef298e97c1d561bc805dad5e8463ec26f")); // ITCOIN_SPECIFIC: due to the changes in nBits and nNonce
         assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
 
         vFixedSeeds.clear();
@@ -401,6 +439,11 @@ public:
     {
         strNetworkID =  CBaseChainParams::REGTEST;
         consensus.signet_blocks = false;
+
+        // ITCOIN_SPECIFIC START
+        consensus.allow_any_block_subsidy = true;
+        // ITCOIN_SPECIFIC END
+
         consensus.signet_challenge.clear();
         consensus.nSubsidyHalvingInterval = 150;
         consensus.BIP34Height = 1; // Always active unless overridden

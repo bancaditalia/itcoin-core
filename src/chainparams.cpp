@@ -3,8 +3,6 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-// ITCOIN_SPECIFIC: TODO: the modifications that in v24.1 were in this file are now to be moved into src/kernel.chainparams.cpp
-
 #include <chainparams.h>
 
 #include <chainparamsseeds.h>
