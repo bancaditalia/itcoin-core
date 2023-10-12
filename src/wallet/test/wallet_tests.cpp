@@ -655,9 +655,9 @@ BOOST_FIXTURE_TEST_CASE(BasicOutputTypesTest, ListCoinsTest)
     std::map<OutputType, size_t> expected_coins_sizes;
     for (const auto& out_type : OUTPUT_TYPES) { expected_coins_sizes[out_type] = 0U; }
 
-    // Verify our wallet has one usable coinbase UTXO before starting
-    // This UTXO is a P2PK, so it should show up in the Other bucket
-    expected_coins_sizes[OutputType::UNKNOWN] = 1U;
+    // Verify our wallet has 100 (ITCOIN_SPECIFIC: it was one) usable coinbase UTXO before starting
+    // These UTXOs are P2PK, so they should show up in the Other bucket (ITCOIN_SPECIFIC: it was "This UTXO is a P2PK, so it"...)
+    expected_coins_sizes[OutputType::UNKNOWN] = 100U; // ITCOIN_SPECIFIC: it was 1.
     CoinsResult available_coins = WITH_LOCK(wallet->cs_wallet, return AvailableCoins(*wallet));
     BOOST_CHECK_EQUAL(available_coins.Size(), expected_coins_sizes[OutputType::UNKNOWN]);
     BOOST_CHECK_EQUAL(available_coins.coins[OutputType::UNKNOWN].size(), expected_coins_sizes[OutputType::UNKNOWN]);
