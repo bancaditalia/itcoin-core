@@ -41,9 +41,25 @@ class BaseFrostTest(BaseItcoinTest):
         for i in range(self.signet_num_signers):
             p = FROST.Participant(index=i+1, threshold=self.signet_num_signatures, participants=self.signet_num_signers)
             p.init_keygen()
-            p.generate_shares()
             self.participants.append(p)
 
+        # proof of knowledge
+        for p in self.participants:
+            for i in self.participants:
+                if i != p:
+                    assert_equal(p.verify_proof_of_knowledge(i.proof_of_knowledge, i.coefficient_commitments[0], i.index), True)
+
+        # shares generation
+        for p in self.participants:
+            p.generate_shares()
+
+        # shares verification
+        for i in self.participants:
+            for l in self.participants:
+                if i != l:
+                    assert_equal(i.verify_share(l.shares[i.index -1], l.coefficient_commitments), True)
+
+        # computation of partial secrets
         for p in self.participants:
             p.aggregate_shares([participant.shares[p.index-1] for participant in self.participants if participant.index != p.index])
 
