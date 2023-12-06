@@ -263,6 +263,12 @@ if ENABLE_MODULE_SCHNORRSIG
 include src/modules/schnorrsig/Makefile.am.include
 endif
 
+# FROST_SPECIFIC - START
+if ENABLE_MODULE_FROST
+include src/modules/frost/Makefile.am.include
+endif
+# FROST_SPECIFIC - END
+
 EXTRA_DIST += src/wycheproof/WYCHEPROOF_COPYING
 EXTRA_DIST += src/wycheproof/ecdsa_secp256k1_sha256_bitcoin_test.h
 EXTRA_DIST += src/wycheproof/ecdsa_secp256k1_sha256_bitcoin_test.json

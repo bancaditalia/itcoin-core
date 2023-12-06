@@ -1,13 +1,14 @@
 AC_PREREQ([2.69])
+define(_CLIENT_VERSION_ITCOIN_BUILD, 1) # ITCOIN_SPECIFIC: this field controls the final digit in the version string "Itcoin Core version vMAJOR.MINOR.BUILD-itcoin-1"
 define(_CLIENT_VERSION_MAJOR, 25)
 define(_CLIENT_VERSION_MINOR, 1)
 define(_CLIENT_VERSION_BUILD, 0)
 define(_CLIENT_VERSION_RC, 0)
 define(_CLIENT_VERSION_IS_RELEASE, true)
 define(_COPYRIGHT_YEAR, 2023)
-define(_COPYRIGHT_HOLDERS,[The %s developers])
-define(_COPYRIGHT_HOLDERS_SUBSTITUTION,[[Bitcoin Core]])
-AC_INIT([Bitcoin Core],m4_join([.], _CLIENT_VERSION_MAJOR, _CLIENT_VERSION_MINOR, _CLIENT_VERSION_BUILD)m4_if(_CLIENT_VERSION_RC, [0], [], [rc]_CLIENT_VERSION_RC),[https://github.com/bitcoin/bitcoin/issues],[bitcoin],[https://bitcoincore.org/])
+define(_COPYRIGHT_HOLDERS,[%s]) # ITCOIN_SPECIFIC: "The %s developers" -> "%s"
+define(_COPYRIGHT_HOLDERS_SUBSTITUTION,[[Bank of Italy]]) # ITCOIN_SPECIFIC: "Bitcoin Core" -> "Bank of Italy"
+AC_INIT([Itcoin Core],m4_join([.], _CLIENT_VERSION_MAJOR, _CLIENT_VERSION_MINOR, _CLIENT_VERSION_BUILD)m4_if(_CLIENT_VERSION_RC, [0], [], [rc]_CLIENT_VERSION_RC)[-itcoin-]_CLIENT_VERSION_ITCOIN_BUILD,[https://github.com/bancaditalia/itcoin-core/issues],[itcoin],[https://bancaditalia.github.io/itcoin/]) # ITCOIN_SPECIFIC: changed the package name "Bitcoin Core" -> "Itcoin Core", added itcoin build number and changed support URIs
 AC_CONFIG_SRCDIR([src/validation.cpp])
 AC_CONFIG_HEADERS([src/config/bitcoin-config.h])
 AC_CONFIG_AUX_DIR([build-aux])
@@ -1987,7 +1988,7 @@ CPPFLAGS_TEMP="$CPPFLAGS"
 unset CPPFLAGS
 CPPFLAGS="$CPPFLAGS_TEMP"
 
-ac_configure_args="${ac_configure_args} --disable-shared --with-pic --enable-benchmark=no --enable-module-recovery --disable-module-ecdh"
+ac_configure_args="${ac_configure_args} --disable-shared --with-pic --enable-benchmark=no --enable-module-recovery --enable-module-schnorrsig --enable-experimental --enable-module-frost" # ITCOIN_SPECIFIC: added "--enable-experimental" and "--enable-module-frost"
 AC_CONFIG_SUBDIRS([src/secp256k1])
 
 AC_OUTPUT

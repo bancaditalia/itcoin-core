@@ -9,6 +9,7 @@ precompute_ecmult
 ctime_tests
 ecdh_example
 ecdsa_example
+frost_example
 schnorr_example
 *.exe
 *.so
