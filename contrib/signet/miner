@@ -5,7 +5,8 @@
 
 import argparse
 import json
-import logging
+# ITCOIN_SPECIFIC logging is imported using "import as"
+import logging as logging_the_lib
 import math
 import os
 import re
@@ -14,19 +15,59 @@ import sys
 import time
 import subprocess
 
+from typing import Tuple # ITCOIN_SPECIFIC
 PATH_BASE_CONTRIB_SIGNET = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 PATH_BASE_TEST_FUNCTIONAL = os.path.abspath(os.path.join(PATH_BASE_CONTRIB_SIGNET, "..", "..", "test", "functional"))
-sys.path.insert(0, PATH_BASE_TEST_FUNCTIONAL)
+
+# ITCOIN_SPECIFIC - START
+
+# original code left as comment
+# sys.path.insert(0, PATH_BASE_TEST_FUNCTIONAL)
+
+if (PATH_BASE_TEST_FUNCTIONAL not in sys.path):
+    sys.path.insert(0, PATH_BASE_TEST_FUNCTIONAL)
+
+from test_framework.conftest import ITCOIN_PBFT_ROOT_DIR
+from test_framework.test_node import TestNodeCLI
+# ITCOIN_SPECIFIC - END
 
 from test_framework.blocktools import get_witness_script, script_BIP34_coinbase_height # noqa: E402
 from test_framework.messages import CBlock, CBlockHeader, COutPoint, CTransaction, CTxIn, CTxInWitness, CTxOut, from_binary, from_hex, ser_string, ser_uint256, tx_from_hex # noqa: E402
 from test_framework.psbt import PSBT, PSBTMap, PSBT_GLOBAL_UNSIGNED_TX, PSBT_IN_FINAL_SCRIPTSIG, PSBT_IN_FINAL_SCRIPTWITNESS, PSBT_IN_NON_WITNESS_UTXO, PSBT_IN_SIGHASH_TYPE # noqa: E402
 from test_framework.script import CScriptOp # noqa: E402
 
-logging.basicConfig(
-    format='%(asctime)s %(levelname)s %(message)s',
-    level=logging.INFO,
-    datefmt='%Y-%m-%d %H:%M:%S')
+# ITCOIN_SPECIFIC - START
+#
+# bitcoin's contrib/signet/miner does not use a dedicated logger, and instead
+# directly calls logging.{debug,info,warning,error}. By default, the logging
+# module writes to stderr. This is ok as long as the miner is called via command
+# line.
+# However, in itcoin the miner is also loaded as a module by the functional test
+# framework. In that case we cannot afford to write to stderr, because the test
+# framework considers a failure any output to stderr.
+#
+# This section configures a proper logger for the miner module, but
+# monkey-patches the "logging" name, assigning it to the logger. In this way we
+# can keep the source code as close as possible to upstream, without breaking
+# the tests.
+#
+# If a proper logging was upstreamed in bitcoin, this patch could be reverted.
+logger = logging_the_lib.getLogger("miner")
+logger.setLevel(logging_the_lib.DEBUG)
+logger.propagate = False
+logger_formatter = logging_the_lib.Formatter('%(asctime)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+stdout_handler = logging_the_lib.StreamHandler(sys.stdout)
+stdout_handler.setLevel(logging_the_lib.INFO)
+stdout_handler.setFormatter(logger_formatter)
+logger.addHandler(stdout_handler)
+
+# monkey patch: trick the rest of the source code to use a customized logger,
+# while thinking it is continuingto use the library's one.
+#
+# The "type: ignore" annotation here is necessary, because we are really
+# assigning something of type Logger to a name that was originally of Module
+logging = logger # type: ignore
+# ITCOIN_SPECIFIC - END
 
 SIGNET_HEADER = b"\xec\xc7\xda\xa2"
 PSBT_SIGNET_BLOCK = b"\xfc\x06signetb"    # proprietary PSBT global field holding the block being signed
@@ -42,20 +83,14 @@ def signet_txs(block, challenge):
     # assumes signet solution has not been added yet so does not need
     # to be removed
 
-    txs = block.vtx[:]
-    txs[0] = CTransaction(txs[0])
-    txs[0].vout[-1].scriptPubKey += CScriptOp.encode_op_pushdata(SIGNET_HEADER)
-    hashes = []
-    for tx in txs:
-        tx.rehash()
-        hashes.append(ser_uint256(tx.sha256))
-    mroot = block.get_merkle_root(hashes)
+    # ITCOIN_SPECIFIC - START
+    # assumes SIGNET_HEADER has already been added so does not need to be added here
 
-    sd = b""
-    sd += struct.pack("<i", block.nVersion)
-    sd += ser_uint256(block.hashPrevBlock)
-    sd += ser_uint256(mroot)
-    sd += struct.pack("<I", block.nTime)
+    # In itcoin, the transaction is first pow-ed and then signed
+    # the signature covers the whole block header, including the pow part, namely nBits and nNonce
+    block_header: CBlockHeader = CBlockHeader(block)
+    sd = block_header.serialize()
+    # ITCOIN_SPECIFIC - END
 
     to_spend = CTransaction()
     to_spend.nVersion = 0
@@ -144,7 +179,7 @@ def get_reward_address(args, height):
         return args.address
 
     if '*' not in args.descriptor:
-        addr = json.loads(args.bcli("deriveaddresses", args.descriptor))[0]
+        addr = args.bcli("deriveaddresses", args.descriptor)[0]  # ITCOIN_SPECIFIC: the call to args.bcli() was originally enclosed in a json.loads()
         args.address = addr
         return addr
 
@@ -154,7 +189,7 @@ def get_reward_address(args, height):
 
     addr = args.derived_addresses.get(height, None)
     if addr is None:
-        addrs = json.loads(args.bcli("deriveaddresses", args.descriptor, "[%d,%d]" % (height, height+20)))
+        addrs = args.bcli("deriveaddresses", args.descriptor, "[%d,%d]" % (height, height+20))  # ITCOIN_SPECIFIC: the call to args.bcli() was originally enclosed in a json.loads()
         addr = addrs[0]
         for k, a in enumerate(addrs):
             args.derived_addresses[height+k] = a
@@ -168,7 +203,7 @@ def get_reward_addr_spk(args, height):
         return args.address, args.reward_spk
 
     reward_addr = get_reward_address(args, height)
-    reward_spk = bytes.fromhex(json.loads(args.bcli("getaddressinfo", reward_addr))["scriptPubKey"])
+    reward_spk = bytes.fromhex(args.bcli("getaddressinfo", reward_addr)["scriptPubKey"])  # ITCOIN_SPECIFIC: the call to args.bcli() was originally enclosed in a json.loads()
     if args.address is not None:
         # will always be the same, so cache
         args.reward_spk = reward_spk
@@ -233,7 +268,8 @@ def next_block_delta(last_nbits, last_hash, ultimate_target, do_poisson, max_int
     #  4) if doing poisson, use the last hash to pick a uniformly random number in [0,1), and work out a random multiplier to vary the average by
     #  5) cap the resulting interval between 1 second and 1 hour to avoid extremes
 
-    INTERVAL = 600.0*2016/2015 # 10 minutes, adjusted for the off-by-one bug
+    # ITCOIN_SPECIFIC: in upstream Bitcoin, INTERVAL is 10 minutes
+    INTERVAL = 60.0*2016/2015 # 1 minute, adjusted for the off-by-one bug
 
     current_target = nbits_to_target(last_nbits)
     retarget_factor = ultimate_target / current_target
@@ -255,6 +291,201 @@ def next_block_delta(last_nbits, last_hash, ultimate_target, do_poisson, max_int
 def next_block_is_mine(last_hash, my_blocks):
     det_rand = int(last_hash[-16:-8], 16)
     return my_blocks[0] <= (det_rand % my_blocks[2]) < my_blocks[1]
+
+# ITCOIN_SPECIFIC - START
+#
+# new methods for solution independent blockchain miner
+class DoGenerateArgs:
+    # Util class for passing arguments to signet miner do_generate
+    pass
+
+def do_generate_next_block(args, blocktime=None) -> Tuple[CBlock, dict, str]:
+    # Check input parameters
+    grind_cmd = args.grind_cmd
+    if grind_cmd is None:
+        raise
+
+    # bci
+    bci = args.bcli("getblockchaininfo")
+
+    # gbt
+    tmpl = args.bcli("getblocktemplate", '{"rules":["signet","segwit"]}')
+    if tmpl["previousblockhash"] != bci["bestblockhash"]:
+        logging.warning("GBT based off unexpected block (%s not %s), retrying", tmpl["previousblockhash"], bci["bestblockhash"])
+        raise
+    logging.debug("GBT template: %s", tmpl)
+
+    # address for reward
+    reward_addr, reward_spk = get_reward_addr_spk(args, tmpl["height"])
+
+    cbtx = create_coinbase(height=tmpl["height"], value=tmpl["coinbasevalue"], spk=reward_spk)
+    cbtx.vin[0].nSequence = 2**32-2
+    cbtx.rehash()
+
+    block = CBlock()
+    block.nVersion = tmpl["version"]
+    block.hashPrevBlock = int(tmpl["previousblockhash"], 16)
+    block.nTime = tmpl["curtime"] if blocktime is None else blocktime
+    if block.nTime < tmpl["mintime"]:
+        block.nTime = tmpl["mintime"]
+    block.nBits = int(tmpl["bits"], 16)
+    block.nNonce = 0
+    block.vtx = [cbtx] + [tx_from_hex(t["data"]) for t in tmpl["transactions"]]
+    logging.debug(f"Block merkle root (function which includes signatures) after block creation = { ser_uint256(block.calc_merkle_root()).hex() }")
+
+    # Appending the witness commitment
+    witnonce = 0
+    witroot = block.calc_witness_merkle_root()
+    cbwit = CTxInWitness()
+    cbwit.scriptWitness.stack = [ser_uint256(witnonce)]
+    block.vtx[0].wit.vtxinwit = [cbwit]
+    block.vtx[0].vout.append(CTxOut(0, bytes(get_witness_script(witroot, witnonce))))
+    block.vtx[0].rehash()
+    logging.debug(f"Block merkle root (function which includes signatures) after appending witness commitment = { ser_uint256(block.calc_merkle_root()).hex() }")
+
+    # Appending the SIGNET_HEADER
+    # In itcoin this is made here, because the merkle root should include the signet header but not the signet solution
+    # In the original signet, the signet header was appendend later, together with the signet solution. The merke root included both.
+    block.vtx[0].vout[-1].scriptPubKey += CScriptOp.encode_op_pushdata(SIGNET_HEADER)
+    block.vtx[0].rehash()
+    logging.debug(f"Block witness commitment after appending signet header = { block.vtx[0].vout[-1].scriptPubKey.hex() }")
+    logging.debug(f"Block merkle root (function which includes signatures) after appending signet header = { ser_uint256(block.calc_merkle_root()).hex() }")
+
+    # Transactions updated, recalculate block merkle root
+    # Signet solution has not been added, so there is no need to use an itcoin signet specific merkle root calculator
+    block.hashMerkleRoot = block.calc_merkle_root()
+
+    # Mine block
+    logging.debug(f"Grinding block...")
+    headhex = CBlockHeader.serialize(block).hex()
+    cmd = grind_cmd.split(" ") + [headhex]
+    subp_env = dict(os.environ, LD_LIBRARY_PATH=f'$LD_LIBRARY_PATH:{ITCOIN_PBFT_ROOT_DIR}/usrlocal/lib')
+    newheadhex = subprocess.run(cmd, env=subp_env, stdout=subprocess.PIPE, input=b"", check=True).stdout.strip()
+    newhead = from_hex(CBlockHeader(), newheadhex.decode('utf8'))
+    block.nNonce = newhead.nNonce
+    block.rehash()
+    logging.debug(f"Block merkle root (function which includes signatures) after mining = { ser_uint256(block.calc_merkle_root()).hex() }")
+
+    return block, tmpl, reward_addr
+
+def do_sign_block(args, block: CBlock, signet_spk) -> CBlock:
+    signet_spk_bin = bytes.fromhex(signet_spk)
+
+    # Creating the signet transactions
+    signme, spendme = signet_txs(block, signet_spk_bin)
+    logging.debug(f"signme.vin[0] = {signme.vin[0]}")
+
+    # sign block
+    psbt = do_createpsbt(block, signme, spendme)
+    input_stream = os.linesep.join([psbt, "true", "ALL"])
+    psbt_signed = args.bcli("-stdin", "walletprocesspsbt", input=input_stream)
+    if not psbt_signed.get("complete",False):
+        logging.debug("Generated PSBT: %s" % (psbt,))
+        sys.stderr.write("PSBT signing failed")
+        raise RuntimeError("PSBT signing failed")
+
+    # The block returned by do_decode_psbt is just a copy of the original block,
+    # likely passed to allow PSBT signer to verify the block being signed
+    # PSBT_IN_PROPRIETARY = 0xFC
+    # PSBT_SIGNET_BLOCK = b"\xfc\x06signetb"
+    # https://github.com/bitcoin/bips/blob/master/bip-0174.mediawiki
+    block_copy, signet_solution = do_decode_psbt(psbt_signed["psbt"])
+
+    # Append the signet solution
+    # We remove the last 5 bytes, in order to remove the previously appended SIGNET_HEADER
+    # We append SIGNET_HEADER and signet_solution again as a single pushdata operation
+    block_copy.vtx[0].vout[-1].scriptPubKey = block_copy.vtx[0].vout[-1].scriptPubKey[:-5] + CScriptOp.encode_op_pushdata(SIGNET_HEADER + signet_solution)
+    block_copy.vtx[0].rehash()
+
+    logging.debug(f"Signet solution = { signet_solution.hex() }")
+    logging.debug(f"Block merkle root (function which includes signatures) after signature = { ser_uint256(block_copy.calc_merkle_root()).hex() }")
+
+    return block_copy
+
+
+def do_sign_block_partial(args: DoGenerateArgs, block: CBlock, signet_spk: str) -> Tuple[str, bool]:
+    """
+    Sign a block for the part we can sign for.
+
+    :param args: the TestNode configurations
+    :param block: the block
+    :param signet_spk: the signet challenge
+    :return: the (potentially partially) PSBT, and a boolean that says whether the PSBT is complete or not.
+    """
+    signet_spk_bin = bytes.fromhex(signet_spk)
+
+    # Creating the signet transactions
+    signme, spendme = signet_txs(block, signet_spk_bin)
+    logging.debug(f"signme.vin[0] = {signme.vin[0]}")
+
+    psbt = do_createpsbt(block, signme, spendme)
+
+    input_stream = os.linesep.join([psbt, "true", "ALL"])
+    partially_signed_psbt = args.bcli("-stdin", "walletprocesspsbt", input=input_stream)
+    return partially_signed_psbt["psbt"], partially_signed_psbt["complete"]
+
+
+def do_finalize_psbt(args: DoGenerateArgs, psbt: str) -> Tuple[str, bool]:
+    """
+    Finalize the PSBT.
+
+    :param args: the TestNode configuration
+    :param psbt: the PSBT to finalize
+    :return: the finalized PSBT
+    """
+    finalized_psbt = args.bcli("finalizepsbt", psbt, False)
+    return finalized_psbt["psbt"], finalized_psbt["complete"]
+
+
+def do_combine_psbt(args: DoGenerateArgs, *psbts: str) -> str:
+    """
+    Combine multiple PSBTs into one.
+
+    :param args: the TestNode configurations.
+    :param psbts: the list of PSBTs.
+    :return: the combined PSBT.
+    """
+    assert len(psbts) > 0, "at least one PSBT is required"
+    combined_psbt = args.bcli("combinepsbt", json.dumps(psbts))
+    return combined_psbt
+
+
+def extract_block(args, psbt: str) -> CBlock:
+    """
+    Extract a block from the (complete) PSBT
+
+    :param args: the TestNode configuration
+    :param psbt: the PSBT. It must be a complete PSBT.
+    :return: the block
+    """
+    # check whether the PSBT is final or not.
+    analysis = args.bcli("analyzepsbt", psbt)
+    if not analysis["inputs"][0].get("is_final", False):
+        raise RuntimeError("PSBT is not complete")
+
+    block_copy, signet_solution = do_decode_psbt(psbt)
+    if not signet_solution:
+        raise ValueError("could not extract the signet solution")
+
+    # Append the signet solution
+    # We remove the last 5 bytes, in order to remove the previously appended SIGNET_HEADER
+    # We append SIGNET_HEADER and signet_solution again as a single pushdata operation
+    block_copy.vtx[0].vout[-1].scriptPubKey = block_copy.vtx[0].vout[-1].scriptPubKey[:-5] + CScriptOp.encode_op_pushdata(SIGNET_HEADER + signet_solution)
+    block_copy.vtx[0].rehash()
+
+    logging.debug(f"Signet solution = { signet_solution.hex() }")
+    logging.debug(f"Block merkle root after signature = { ser_uint256(block_copy.calc_merkle_root()).hex() }")
+
+    return block_copy
+
+def do_propagate_block(args, block: CBlock):
+    logging.debug(f"propagating block = {block.serialize().hex()}")
+    logging.debug(f"with block_header = {CBlockHeader(block).serialize().hex()}")
+
+    # submit block
+    r = args.bcli("-stdin", "submitblock", input=block.serialize().hex())
+    return r
+# ITCOIN_SPECIFIC - END
 
 def do_generate(args):
     if args.max_blocks is not None:
@@ -281,7 +512,7 @@ def do_generate(args):
         if args.nbits is not None:
             logging.error("Cannot specify --nbits and --min-nbits")
             return 1
-        args.nbits = "1e0377ae"
+        args.nbits = "207fffff"  # ITCOIN_SPECIFIC (changed "1e0377ae" -> "207fffff")
         logging.info("Using nbits=%s" % (args.nbits))
 
     if args.set_block_time is None:
@@ -320,10 +551,10 @@ def do_generate(args):
     while max_blocks is None or mined_blocks < max_blocks:
 
         # current status?
-        bci = json.loads(args.bcli("getblockchaininfo"))
+        bci = args.bcli("getblockchaininfo")  # ITCOIN_SPECIFIC: the call to args.bcli() was originally enclosed in a json.loads()
 
         if bestheader["hash"] != bci["bestblockhash"]:
-            bestheader = json.loads(args.bcli("getblockheader", bci["bestblockhash"]))
+            bestheader = args.bcli("getblockheader", bci["bestblockhash"])  # ITCOIN_SPECIFIC: the call to args.bcli() was originally enclosed in a json.loads()
 
         if lastheader is None:
             lastheader = bestheader["hash"]
@@ -385,8 +616,12 @@ def do_generate(args):
             time.sleep(sleep_for)
             continue
 
+        # ITCOIN_SPECIFIC - START
+        #
+        # generate block using the new methods, leave as comment the other lines to highlight the differences
         # gbt
-        tmpl = json.loads(args.bcli("getblocktemplate", '{"rules":["signet","segwit"]}'))
+        # tmpl = json.loads(args.bcli("getblocktemplate", '{"rules":["signet","segwit"]}'))
+        block, tmpl, reward_addr = do_generate_next_block(args, blocktime=mine_time)
         if tmpl["previousblockhash"] != bci["bestblockhash"]:
             logging.warning("GBT based off unexpected block (%s not %s), retrying", tmpl["previousblockhash"], bci["bestblockhash"])
             time.sleep(1)
@@ -402,23 +637,26 @@ def do_generate(args):
                 return 1
 
         # address for reward
-        reward_addr, reward_spk = get_reward_addr_spk(args, tmpl["height"])
+        # reward_addr, reward_spk = get_reward_addr_spk(args, tmpl["height"])
 
         # mine block
         logging.debug("Mining block delta=%s start=%s mine=%s", seconds_to_hms(mine_time-bestheader["time"]), mine_time, is_mine)
         mined_blocks += 1
-        psbt = generate_psbt(tmpl, reward_spk, blocktime=mine_time)
-        input_stream = os.linesep.join([psbt, "true", "ALL"]).encode('utf8')
-        psbt_signed = json.loads(args.bcli("-stdin", "walletprocesspsbt", input=input_stream))
-        if not psbt_signed.get("complete",False):
-            logging.debug("Generated PSBT: %s" % (psbt,))
-            sys.stderr.write("PSBT signing failed\n")
-            return 1
-        block, signet_solution = do_decode_psbt(psbt_signed["psbt"])
-        block = finish_block(block, signet_solution, args.grind_cmd)
+        signed_block = do_sign_block(args, block, tmpl["signet_challenge"])
+        # psbt = generate_psbt(tmpl, reward_spk, blocktime=mine_time)
+        # input_stream = os.linesep.join([psbt, "true", "ALL"]).encode('utf8')
+        # psbt_signed = json.loads(args.bcli("-stdin", "walletprocesspsbt", input=input_stream))
+        # if not psbt_signed.get("complete",False):
+        #     logging.debug("Generated PSBT: %s" % (psbt,))
+        #     sys.stderr.write("PSBT signing failed\n")
+        #     return 1
+        # block, signet_solution = do_decode_psbt(psbt_signed["psbt"])
+        # block = finish_block(block, signet_solution, args.grind_cmd)
 
         # submit block
-        r = args.bcli("-stdin", "submitblock", input=block.serialize().hex().encode('utf8'))
+        # r = args.bcli("-stdin", "submitblock", input=block.serialize().hex().encode('utf8'))
+        r = do_propagate_block(args, signed_block)
+        # ITCOIN_SPECIFIC - END
 
         # report
         bstr = "block" if is_mine else "backup block"
@@ -469,13 +707,50 @@ def do_calibrate(args):
     print("nbits=%08x for %ds average mining time" % (target_to_nbits(want_targ), want_time))
     return 0
 
-def bitcoin_cli(basecmd, args, **kwargs):
-    cmd = basecmd + ["-signet"] + args
-    logging.debug("Calling bitcoin-cli: %r", cmd)
-    out = subprocess.run(cmd, stdout=subprocess.PIPE, **kwargs, check=True).stdout
-    if isinstance(out, bytes):
-        out = out.decode('utf8')
-    return out.strip()
+# ITCOIN_SPECIFIC - START
+def bitcoin_cli(cli_object: TestNodeCLI, command, *args, **kwargs):
+    """A generic bitcoin_cli function
+
+       This function keeps almost unchanged the upstream miner interface,
+       while wrapping the TestNodeCLI.send_cli method of the Bitcoin test framework.
+
+       :param cli_object: an instance of TestNodeCLI
+       :param command: string, the first argument to be passed to bitcoin-cli command line, e.g. getblockchaininfo for a normal operation or -stdin to invoke
+       :param *args: strings, other arguments to be passed to bitcoin-cli command line
+       :param **kwargs: named arguments to the bitcoin-cli command line or input="" when used together with -stdin (in this case the input is encoded)
+
+       :return: the result of the bitcoin JSON-RPC command. The result is decoded from json if json.loads on the result string is successful, otherwise a string is returned
+    """
+    logging.debug("Calling bitcoin-cli: %r %r", command, list(args))
+
+    # Build the command line as result of command and *args
+    cmd_line = [command]+list(args)
+
+    # Derive the options for bitcoin-cli.
+    # They will be passed to TestNodeCLI method using the __call__(self, *options, input=None) function
+    options = []
+    for opt in cmd_line:
+        if opt.startswith("-"):
+            options.append(cmd_line.pop(0))
+        else:
+            break
+
+    # Get the command for TestNodeCLI send_cli
+    cmd_command = cmd_line.pop(0)
+
+    # What is left are the args for TestNodeCLI send_cli
+    cmd_args = cmd_line
+
+    # Derive the input for TestNodeCLI method call
+    # What is left will be passed as kwargs to the send_cli method
+    cmd_input =  kwargs.pop("input", None)
+
+    # Finally use the callable function with options and input
+    result = cli_object(*options, input=cmd_input).send_cli(cmd_command, *cmd_args,  **kwargs)
+
+    logging.debug("Result of bitcoin-cli: %r %r", command, result)
+    return result
+# ITCOIN_SPECIFIC - END
 
 def main():
     parser = argparse.ArgumentParser()
@@ -517,7 +792,20 @@ def main():
 
     args = parser.parse_args(sys.argv[1:])
 
-    args.bcli = lambda *a, input=b"", **kwargs: bitcoin_cli(args.cli.split(" "), list(a), input=input, **kwargs)
+    # ITCOIN_SPECIFIC - START
+    # We keep unchanged the command-line miner interface, but internally we use the TestNodeCLI object
+    # via the bitcoin_cli method that calls send_cli
+    inner_argv = args.cli.split(" ")
+    inner_parser = argparse.ArgumentParser()
+    inner_parser.add_argument("-datadir", default="~/.bitcoin", type=str, help="bitcoin datadir")
+    inner_parser.add_argument("-conf", default=None, type=str, help="bitcoin conf file", dest='itcoin_conf')
+    inner_parser.add_argument("-rpcconnect", default=None, type=str, help="rpc connect host", dest='itcoin_rpcconnect')
+    inner_args = inner_parser.parse_args(inner_argv[1:])
+    cli : TestNodeCLI = TestNodeCLI(inner_argv[0], inner_args.datadir,
+        '-conf='+inner_args.itcoin_conf if inner_args.itcoin_conf is not None else None,
+        '-rpcconnect='+inner_args.itcoin_rpcconnect if inner_args.itcoin_rpcconnect is not None else None)
+    args.bcli = lambda command=None, *args, **kwargs: bitcoin_cli(cli, command, *args, **kwargs)
+    # ITCOIN_SPECIFIC - END
 
     if hasattr(args, "address") and hasattr(args, "descriptor"):
         if args.address is None and args.descriptor is None:
@@ -528,12 +816,17 @@ def main():
             return 1
         args.derived_addresses = {}
 
+    # ITCOIN_SPECIFIC - START
     if args.debug:
-        logging.getLogger().setLevel(logging.DEBUG)
+        logger_level = logging_the_lib.DEBUG
     elif args.quiet:
-        logging.getLogger().setLevel(logging.WARNING)
+        logger_level = logging_the_lib.WARNING
     else:
-        logging.getLogger().setLevel(logging.INFO)
+        logger_level = logging_the_lib.INFO
+    logger.setLevel(logger_level)
+    for handler in logger.handlers:
+        handler.setLevel(logger_level)
+    # ITCOIN_SPECIFIC - END
 
     if hasattr(args, "fn"):
         return args.fn(args)

@@ -150,3 +150,10 @@ dist/
 /guix-build-*
 
 /ci/scratch/
+
+# itcoin
+target
+infra/datadir
+.vscode
+.vscode/
+*.code-workspace

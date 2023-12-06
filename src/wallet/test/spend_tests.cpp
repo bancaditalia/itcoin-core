@@ -127,15 +127,21 @@ BOOST_FIXTURE_TEST_CASE(wallet_duplicated_preset_inputs_test, TestChain100Setup)
     std::set<COutPoint> preset_inputs = {coins[0].outpoint, coins[1].outpoint, coins[2].outpoint};
 
     // Try to create a tx that spends more than what preset inputs + wallet selected inputs are covering for.
-    // The wallet can cover up to 200 BTC, and the tx target is 299 BTC.
+    // The wallet can cover up to 5200 BTC, and the tx target is 5299 BTC. ITCOIN_SPECIFIC: can cover 5200 (was 200), target is 5299 (was 299).
     std::vector<CRecipient> recipients = {{GetScriptForDestination(*Assert(wallet->GetNewDestination(OutputType::BECH32, "dummy"))),
-                                           /*nAmount=*/299 * COIN, /*fSubtractFeeFromAmount=*/true}};
+                                           /*nAmount=*/5299 * COIN, /*fSubtractFeeFromAmount=*/true}}; // ITCOIN_SPECIFIC: it was 299.
     CCoinControl coin_control;
     coin_control.m_allow_other_inputs = true;
     for (const auto& outpoint : preset_inputs) {
         coin_control.Select(outpoint);
     }
 
+    /*
+     * ITCOIN_SPECIFIC: in the following description, 299 is 5299 and 200 is 5200.
+     *
+     * The difference is left unchanged to 99, so the test should fail if three preset_inputs, valued 150,
+     * are counted twice.
+     */
     // Attempt to send 299 BTC from a wallet that only has 200 BTC. The wallet should exclude
     // the preset inputs from the pool of available coins, realize that there is not enough
     // money to fund the 299 BTC payment, and fail with "Insufficient funds".

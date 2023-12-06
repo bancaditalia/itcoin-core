@@ -144,6 +144,13 @@ struct Params {
         } // no default case, so the compiler can warn about missing cases
         return std::numeric_limits<int>::max();
     }
+
+    /**
+     * ITCOIN_SPECIFIC
+     * If true, validation check on block subsidy is skipped
+     * and the block subsidy value in the miner is taken from command line arguments -blocksubsidy
+     */
+    bool allow_any_block_subsidy{false};
 };
 
 } // namespace Consensus

@@ -162,6 +162,9 @@ const std::vector<std::string> RPC_COMMANDS_SAFE_FOR_FUZZING{
     "submitheader",
     "submitpackage",
     "syncwithvalidationinterfacequeue",
+    // ITCOIN_SPECIFIC START
+    "testblockvalidity",
+    // ITCOIN_SPECIFIC END
     "testmempoolaccept",
     "uptime",
     "utxoupdatepsbt",

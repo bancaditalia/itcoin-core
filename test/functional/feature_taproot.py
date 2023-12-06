@@ -1541,7 +1541,7 @@ class TaprootTest(BitcoinTestFramework):
         block.solve()
         self.nodes[0].submitblock(block.serialize().hex())
         assert_equal(self.nodes[0].getblockcount(), 1)
-        self.generate(self.nodes[0], COINBASE_MATURITY)
+        self.generate(self.nodes[0], 100) # ITCOIN_SPECIFIC: it was COINBASE_MATURITY instead of hardcoded 100.
 
         SEED = 317
         VALID_LEAF_VERS = list(range(0xc0, 0x100, 2)) + [0x66, 0x7e, 0x80, 0x84, 0x96, 0x98, 0xba, 0xbc, 0xbe]

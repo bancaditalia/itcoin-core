@@ -7754,6 +7754,12 @@ int main(int argc, char **argv) {
     run_schnorrsig_tests();
 #endif
 
+/* FROST_SPECIFIC - START */
+#ifdef ENABLE_MODULE_FROST
+    run_frost_tests();
+#endif
+/* FROST_SPECIFIC - END */
+
     /* util tests */
     run_secp256k1_memczero_test();
     run_secp256k1_byteorder_tests();

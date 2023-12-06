@@ -11,6 +11,10 @@
 
 #include <optional>
 
+constexpr uint8_t SIGNET_HEADER[4] = {0xec, 0xc7, 0xda, 0xa2}; // ITCOIN_SPECIFIC: moved from signet.cpp
+
+bool FetchAndClearCommitmentSection(const Span<const uint8_t> header, CScript& witness_commitment, std::vector<uint8_t>& result); // ITCOIN_SPECIFIC: exposed from signet.cpp (it was a static function)
+
 /**
  * Extract signature and check whether a block has a valid solution
  */

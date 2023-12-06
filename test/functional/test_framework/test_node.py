@@ -22,6 +22,8 @@ import shlex
 import sys
 from pathlib import Path
 
+from test_framework.conftest import ITCOIN_PBFT_ROOT_DIR
+
 from .authproxy import JSONRPCException
 from .descriptors import descsum_create
 from .p2p import P2P_SUBVERSION
@@ -197,9 +199,9 @@ class TestNode():
 
         # Add a new stdout and stderr file each time bitcoind is started
         if stderr is None:
-            stderr = tempfile.NamedTemporaryFile(dir=self.stderr_dir, delete=False)
+            stderr = tempfile.NamedTemporaryFile(dir=self.stderr_dir, prefix="core_", delete=False)
         if stdout is None:
-            stdout = tempfile.NamedTemporaryFile(dir=self.stdout_dir, delete=False)
+            stdout = tempfile.NamedTemporaryFile(dir=self.stdout_dir, prefix="core_", delete=False)
         self.stderr = stderr
         self.stdout = stdout
 
@@ -212,7 +214,10 @@ class TestNode():
         delete_cookie_file(self.datadir, self.chain)
 
         # add environment variable LIBC_FATAL_STDERR_=1 so that libc errors are written to stderr and not the terminal
-        subp_env = dict(os.environ, LIBC_FATAL_STDERR_="1")
+        subp_env = dict(os.environ,
+            LIBC_FATAL_STDERR_="1",
+            LD_LIBRARY_PATH=f'$LD_LIBRARY_PATH:{ITCOIN_PBFT_ROOT_DIR}/usrlocal/lib'
+        )
 
         self.process = subprocess.Popen(self.args + extra_args, env=subp_env, stdout=stdout, stderr=stderr, cwd=cwd, **kwargs)
 
@@ -708,8 +713,10 @@ def arg_to_cli(arg):
 
 class TestNodeCLI():
     """Interface to bitcoin-cli for an individual node"""
-    def __init__(self, binary, datadir):
-        self.options = []
+    # ITCOIN_SPECIFIC - START
+    def __init__(self, binary, datadir, itcoin_conf=None, itcoin_rpcconnect=None):
+        self.options = [option for option in (itcoin_conf, itcoin_rpcconnect) if option]
+        # ITCOIN_SPECIFIC - END
         self.binary = binary
         self.datadir = datadir
         self.input = None
@@ -718,7 +725,7 @@ class TestNodeCLI():
     def __call__(self, *options, input=None):
         # TestNodeCLI is callable with bitcoin-cli command-line options
         cli = TestNodeCLI(self.binary, self.datadir)
-        cli.options = [str(o) for o in options]
+        cli.options = self.options + [str(o) for o in options] # ITCOIN_SPECIFIC
         cli.input = input
         return cli
 

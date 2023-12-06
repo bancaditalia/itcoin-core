@@ -1042,6 +1042,74 @@ static RPCHelpMan submitheader()
     };
 }
 
+// ITCOIN_SPECIFIC START
+static RPCHelpMan testblockvalidity()
+{
+    return RPCHelpMan{"testblockvalidity",
+                      "Test the validity of the block with respect to the current blockchain tip.",
+                      {
+                        {"hexdata", RPCArg::Type::STR_HEX, RPCArg::Optional::NO, "the hex-encoded block data to check for validity"},
+                        {"check_signet_solution", RPCArg::Type::BOOL, RPCArg::Default{true}, "If false, don't check signet solution of block"},
+                      },
+                      {
+                              RPCResult{"If the block is valid for submit", RPCResult::Type::NONE, "", ""},
+                              RPCResult{"Otherwise", RPCResult::Type::STR, "", "According to BIP22"},
+                      },
+                      RPCExamples{
+                              HelpExampleCli("testblockvalidity", "\"mydata\"")
+                              + HelpExampleRpc("testblockvalidity", "\"mydata\"")
+                      },
+                      [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+{
+    NodeContext& node = EnsureAnyNodeContext(request.context);
+    CChainParams chainparams(Params());
+    ChainstateManager& chainman = EnsureChainman(node);
+
+    bool check_signet_solution = request.params[1].isNull() || (!request.params[1].isNull() && request.params[1].get_bool());
+
+    CBlock block;
+    if (!DecodeHexBlk(block, request.params[0].get_str())) {
+      throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Block decode failed");
+    }
+
+    if (block.vtx.empty() || !block.vtx[0]->IsCoinBase()) {
+      throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Block does not start with a coinbase");
+    }
+
+    uint256 hash = block.GetHash();
+    {
+        LOCK(cs_main);
+        const CBlockIndex* pindex = chainman.m_blockman.LookupBlockIndex(hash);
+        if (pindex) {
+            if (pindex->IsValid(BLOCK_VALID_SCRIPTS)) {
+                return "duplicate";
+            }
+            if (pindex->nStatus & BLOCK_FAILED_MASK) {
+                return "duplicate-invalid";
+            }
+        }
+    }
+    {
+        LOCK(cs_main);
+        const CBlockIndex* pindex = chainman.m_blockman.LookupBlockIndex(block.hashPrevBlock);
+        if (pindex) {
+            chainman.UpdateUncommittedBlockStructures(block, pindex);
+        }
+    }
+
+    {
+        LOCK(cs_main);
+        BlockValidationState state;
+        if (!TestBlockValidity(state, chainparams, chainman.ActiveChainstate(), block, chainman.m_blockman.LookupBlockIndex(block.hashPrevBlock), GetAdjustedTime, true, true, check_signet_solution)) {
+            throw JSONRPCError(RPC_VERIFY_ERROR, strprintf("TestBlockValidity failed: %s", state.ToString()));
+        }
+        return BIP22ValidationResult(state);
+    }
+},
+    };
+}
+// ITCOIN_SPECIFIC END
+
 void RegisterMiningRPCCommands(CRPCTable& t)
 {
     static const CRPCCommand commands[]{
@@ -1051,6 +1119,7 @@ void RegisterMiningRPCCommands(CRPCTable& t)
         {"mining", &getblocktemplate},
         {"mining", &submitblock},
         {"mining", &submitheader},
+        { "mining", &testblockvalidity}, // ITCOIN_SPECIFIC
 
         {"hidden", &generatetoaddress},
         {"hidden", &generatetodescriptor},

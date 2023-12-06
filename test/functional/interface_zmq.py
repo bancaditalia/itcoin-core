@@ -41,16 +41,17 @@ def hash256_reversed(byte_str):
     return hash256(byte_str)[::-1]
 
 class ZMQSubscriber:
-    def __init__(self, socket, topic):
+    def __init__(self, socket, topic, recv_multipart_flags=0):  # ITCOIN_SPECIFIC: added recv_multipart_flags. Set it to zmq.NOBLOCK for tests that have to fail fast because no notifications are supposed to be triggered
         self.sequence = None  # no sequence number received yet
         self.socket = socket
         self.topic = topic
 
         self.socket.setsockopt(zmq.SUBSCRIBE, self.topic)
+        self.recv_multipart_flags = recv_multipart_flags  # ITCOIN_SPECIFIC
 
     # Receive message from publisher and verify that topic and sequence match
     def _receive_from_publisher_and_check(self):
-        topic, body, seq = self.socket.recv_multipart()
+        topic, body, seq = self.socket.recv_multipart(self.recv_multipart_flags)  # ITCOIN_SPECIFIC: added recv_multipart_flags
         # Topic should match the subscriber topic.
         assert_equal(topic, self.topic)
         # Sequence should be incremental.
@@ -237,6 +238,7 @@ class ZMQTest (BitcoinTestFramework):
         assert_equal(self.nodes[0].getzmqnotifications(), [
             {"type": "pubhashblock", "address": address, "hwm": 1000},
             {"type": "pubhashtx", "address": address, "hwm": 1000},
+            {"type": "pubitcoinblock", "address": address, "hwm": 1000},  # ITCOIN_SPECIFIC, must be in alphabetical order by type
             {"type": "pubrawblock", "address": address, "hwm": 1000},
             {"type": "pubrawtx", "address": address, "hwm": 1000},
         ])

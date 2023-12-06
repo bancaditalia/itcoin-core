@@ -3486,7 +3486,7 @@ static bool CheckBlockHeader(const CBlockHeader& block, BlockValidationState& st
     return true;
 }
 
-bool CheckBlock(const CBlock& block, BlockValidationState& state, const Consensus::Params& consensusParams, bool fCheckPOW, bool fCheckMerkleRoot)
+bool CheckBlock(const CBlock& block, BlockValidationState& state, const Consensus::Params& consensusParams, bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSignetSolution) // ITCOIN_SPECIFIC: added fCheckSignetSolution
 {
     // These are checks that are independent of context.
 
@@ -3499,7 +3499,7 @@ bool CheckBlock(const CBlock& block, BlockValidationState& state, const Consensu
         return false;
 
     // Signet only: check block solution
-    if (consensusParams.signet_blocks && fCheckPOW && !CheckSignetBlockSolution(block, consensusParams)) {
+    if (consensusParams.signet_blocks && fCheckPOW && fCheckSignetSolution && !CheckSignetBlockSolution(block, consensusParams)) { // ITCOIN_SPECIFIC: added fCheckSignetSolution
         return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-signet-blksig", "signet block signature validation failure");
     }
 
@@ -4066,10 +4066,48 @@ bool TestBlockValidity(BlockValidationState& state,
                        CBlockIndex* pindexPrev,
                        const std::function<NodeClock::time_point()>& adjusted_time_callback,
                        bool fCheckPOW,
-                       bool fCheckMerkleRoot)
+                       bool fCheckMerkleRoot,
+                       bool fCheckSignetSolution) // ITCOIN_SPECIFIC: added fCheckSignetSolution
 {
     AssertLockHeld(cs_main);
-    assert(pindexPrev && pindexPrev == chainstate.m_chain.Tip());
+    /*
+     * ITCOIN_SPECIFIC - START
+     *
+     * The original bitcoin code contained the following assertion:
+     *
+     *     assert(pindexPrev && pindexPrev == chainstate.m_chain.Tip());
+     *
+     * When the assertion is violated, the process would crash. This condition
+     * never happens in bitcoin because the function is not exposed via the
+     * JSON-RPC API.
+     *
+     * In itcoin-core, TestBlockValidity() could be invoked externally with a
+     * block that does not attach to the chain. We do not want to crash in that
+     * case.
+     *
+     * Thus, we continue doing the same check on pindexPrev and m_chain.Tip() to
+     * ensure that a valid block attaches to the tip, but we return an error in
+     * case of violation.
+     */
+    if (!(pindexPrev && pindexPrev == chainstate.m_chain.Tip())) {
+        std::string pindexPrev_repr;
+        std::string m_chain_Tip_repr;
+
+        if (pindexPrev == nullptr) {
+            pindexPrev_repr = "NULL";
+        } else {
+            pindexPrev_repr = pindexPrev->ToString();
+        }
+
+        if (chainstate.m_chain.Tip() == nullptr) {
+            m_chain_Tip_repr = "NULL";
+        } else {
+            m_chain_Tip_repr = chainstate.m_chain.Tip()->ToString();
+        }
+
+        return error("%s: pindexPrev is %s while chainstate.m_chain.Tip() is %s", __func__, pindexPrev_repr, m_chain_Tip_repr);
+    }
+    // ITCOIN_SPECIFIC - END
     CCoinsViewCache viewNew(&chainstate.CoinsTip());
     uint256 block_hash(block.GetHash());
     CBlockIndex indexDummy(block);
@@ -4080,7 +4118,7 @@ bool TestBlockValidity(BlockValidationState& state,
     // NOTE: CheckBlockHeader is called by CheckBlock
     if (!ContextualCheckBlockHeader(block, state, chainstate.m_blockman, chainstate.m_chainman, pindexPrev, adjusted_time_callback()))
         return error("%s: Consensus::ContextualCheckBlockHeader: %s", __func__, state.ToString());
-    if (!CheckBlock(block, state, chainparams.GetConsensus(), fCheckPOW, fCheckMerkleRoot))
+    if (!CheckBlock(block, state, chainparams.GetConsensus(), fCheckPOW, fCheckMerkleRoot, fCheckSignetSolution)) // ITCOIN_SPECIFIC: added fCheckSignetSolution
         return error("%s: Consensus::CheckBlock: %s", __func__, state.ToString());
     if (!ContextualCheckBlock(block, state, chainstate.m_chainman, pindexPrev))
         return error("%s: Consensus::ContextualCheckBlock: %s", __func__, state.ToString());

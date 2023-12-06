@@ -23,11 +23,11 @@
 #include <util/system.h>
 #include <uint256.h>
 
-static constexpr uint8_t SIGNET_HEADER[4] = {0xec, 0xc7, 0xda, 0xa2};
+// static constexpr uint8_t SIGNET_HEADER[4] = {0xec, 0xc7, 0xda, 0xa2}; ITCOIN_SPECIFIC: moved to signet.h
 
-static constexpr unsigned int BLOCK_SCRIPT_VERIFY_FLAGS = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS | SCRIPT_VERIFY_DERSIG | SCRIPT_VERIFY_NULLDUMMY;
+static constexpr unsigned int BLOCK_SCRIPT_VERIFY_FLAGS = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS | SCRIPT_VERIFY_DERSIG | SCRIPT_VERIFY_NULLDUMMY | SCRIPT_VERIFY_TAPROOT; // ITCOIN_SPECIFIC: added SCRIPT_VERIFY_TAPROOT
 
-static bool FetchAndClearCommitmentSection(const Span<const uint8_t> header, CScript& witness_commitment, std::vector<uint8_t>& result)
+bool FetchAndClearCommitmentSection(const Span<const uint8_t> header, CScript& witness_commitment, std::vector<uint8_t>& result) // ITCOIN_SPECIFIC: removed "static", because the function is being exposed in signet.h
 {
     CScript replacement;
     bool found_header = false;
@@ -114,6 +114,8 @@ std::optional<SignetTxs> SignetTxs::Create(const CBlock& block, const CScript& c
     writer << block.hashPrevBlock;
     writer << signet_merkle;
     writer << block.nTime;
+    writer << block.nBits; // ITCOIN_SPECIFIC: include pow fields (nBits, nNonce) in block signature
+    writer << block.nNonce; // ITCOIN_SPECIFIC: include pow fields (nBits, nNonce) in block signature
     tx_to_spend.vin[0].scriptSig << block_data;
     tx_spending.vin[0].prevout = COutPoint(tx_to_spend.GetHash(), 0);
 

@@ -143,7 +143,7 @@ BOOST_FIXTURE_TEST_CASE(scan_for_wallet_transactions, TestChain100Setup)
         BOOST_CHECK(result.last_failed_block.IsNull());
         BOOST_CHECK_EQUAL(result.last_scanned_block, newTip->GetBlockHash());
         BOOST_CHECK_EQUAL(*result.last_scanned_height, newTip->nHeight);
-        BOOST_CHECK_EQUAL(GetBalance(wallet).m_mine_immature, 100 * COIN);
+        BOOST_CHECK_EQUAL(GetBalance(wallet).m_mine_immature, 0 * COIN); // ITCOIN_SPECIFIC: it was 100, but COINBASE_MATURITY=0 implies that immature balance is always zero
 
         {
             CBlockLocator locator;
@@ -179,7 +179,7 @@ BOOST_FIXTURE_TEST_CASE(scan_for_wallet_transactions, TestChain100Setup)
         BOOST_CHECK_EQUAL(result.last_failed_block, oldTip->GetBlockHash());
         BOOST_CHECK_EQUAL(result.last_scanned_block, newTip->GetBlockHash());
         BOOST_CHECK_EQUAL(*result.last_scanned_height, newTip->nHeight);
-        BOOST_CHECK_EQUAL(GetBalance(wallet).m_mine_immature, 50 * COIN);
+        BOOST_CHECK_EQUAL(GetBalance(wallet).m_mine_immature, 0 * COIN); // ITCOIN_SPECIFIC: it was 50, but COINBASE_MATURITY=0 implies that immature balance is always zero
     }
 
     // Prune the remaining block file.
@@ -373,7 +373,7 @@ BOOST_FIXTURE_TEST_CASE(coin_mark_dirty_immature_credit, TestChain100Setup)
     // credit amount is calculated.
     wtx.MarkDirty();
     AddKey(wallet, coinbaseKey);
-    BOOST_CHECK_EQUAL(CachedTxGetImmatureCredit(wallet, wtx, ISMINE_SPENDABLE), 50*COIN);
+    BOOST_CHECK_EQUAL(CachedTxGetImmatureCredit(wallet, wtx, ISMINE_SPENDABLE), 0*COIN); // ITCOIN_SPECIFIC: it was 50, but COINBASE_MATURITY=0 implies that immature balance is always zero
 }
 
 static int64_t AddTx(ChainstateManager& chainman, CWallet& wallet, uint32_t lockTime, int64_t mockTime, int64_t blockTime)
@@ -594,12 +594,26 @@ BOOST_FIXTURE_TEST_CASE(ListCoinsTest, ListCoinsTestingSetup)
     }
     BOOST_CHECK_EQUAL(list.size(), 1U);
     BOOST_CHECK_EQUAL(std::get<PKHash>(list.begin()->first).ToString(), coinbaseAddress);
-    BOOST_CHECK_EQUAL(list.begin()->second.size(), 2U);
+    /*
+     * ITCOIN_SPECIFIC - START
+     *
+     * COINBASE_MATURITY=0 implies that, at this stage, we have 101 in the
+     * wallet:
+     *     101(initial number of utxo in the wallet) -1(used) +1(change only, no
+     *     new matured coinbase; the coinbase of the new block is not added to
+     *     the wallet) = 101
+     *
+     * In bitcoin-core it was 2:
+     *     1(initial number of utxo in the wallet) -1(used) +2(change, a new
+     *     matured coinbase of an old block; new block coinbase not added) = 2
+     */
+    BOOST_CHECK_EQUAL(list.begin()->second.size(), 101U);
+    // ITCOIN_SPECIFIC - END
 
     // Lock both coins. Confirm number of available coins drops to 0.
     {
         LOCK(wallet->cs_wallet);
-        BOOST_CHECK_EQUAL(AvailableCoinsListUnspent(*wallet).Size(), 2U);
+        BOOST_CHECK_EQUAL(AvailableCoinsListUnspent(*wallet).Size(), 101U); // ITCOIN_SPECIFIC: in bitcoin-core it was 2. See the previous comment for the reason
     }
     for (const auto& group : list) {
         for (const auto& coin : group.second) {

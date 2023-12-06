@@ -153,7 +153,29 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     coinbaseTx.vin[0].prevout.SetNull();
     coinbaseTx.vout.resize(1);
     coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
-    coinbaseTx.vout[0].nValue = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+
+    // ITCOIN_SPECIFIC START
+    if (chainparams.GetConsensus().allow_any_block_subsidy) {
+        /*
+         * If allow_any_block_subsidy is enabled, the block subsidy value is
+         * taken from a command line parameter
+         */
+
+        /*
+         * TODO: we could maybe use the following construct taken from elsewhere
+         *       in this file:
+         *
+         *       std::optional<CAmount> parsed = ParseMoney(gArgs.GetArg("-blocksubsidy", "XXX"));
+         *       blockSubsidy = parsed.value_or(SOME_DEFAULT);
+         */
+        CAmount blockSubsidy = gArgs.GetIntArg("-blocksubsidy", 100 * COIN);
+        coinbaseTx.vout[0].nValue = nFees + blockSubsidy;
+    } else {
+        // original bitcoin code
+        coinbaseTx.vout[0].nValue = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+    }
+    // ITCOIN_SPECIFIC END
+
     coinbaseTx.vin[0].scriptSig = CScript() << nHeight << OP_0;
     pblock->vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
     pblocktemplate->vchCoinbaseCommitment = m_chainstate.m_chainman.GenerateCoinbaseCommitment(*pblock, pindexPrev);

@@ -166,8 +166,8 @@ class AssumeValidTest(BitcoinTestFramework):
 
         # Send blocks to node2. Block 102 will be rejected.
         self.send_blocks_until_disconnected(p2p2)
-        self.wait_until(lambda: self.nodes[2].getblockcount() >= COINBASE_MATURITY + 1)
-        assert_equal(self.nodes[2].getblockcount(), COINBASE_MATURITY + 1)
+        self.wait_until(lambda: self.nodes[2].getblockcount() >= 100 + 1) # ITCOIN_SPECIFIC: it was COINBASE_MATURITY + 1
+        assert_equal(self.nodes[2].getblockcount(), 100 + 1) # ITCOIN_SPECIFIC: it was COINBASE_MATURITY + 1
 
 
 if __name__ == '__main__':

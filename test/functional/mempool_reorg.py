@@ -95,7 +95,7 @@ class MempoolCoinbaseTest(BitcoinTestFramework):
         assert_equal(set(self.nodes[0].getrawmempool()), {spend_1_id, spend_2_1_id, spend_3_1_id})
 
         self.log.info("Use invalidateblock to re-org back and make all those coinbase spends immature/invalid")
-        b = self.nodes[0].getblockhash(first_block + 100)
+        b = self.nodes[0].getblockhash(first_block) # ITCOIN_SPECIFIC: It was first_block + 100. Nevertheless, since COINBASE_MATURITY = 0, we need to invalidate first_block to make above transactions unspendable.
         for node in self.nodes:
             node.invalidateblock(b)
 
