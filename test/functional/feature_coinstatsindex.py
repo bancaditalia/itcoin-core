@@ -260,14 +260,14 @@ class CoinStatsIndexTest(BitcoinTestFramework):
         reorg_block = reorg_blocks[1]
         res_invalid = index_node.gettxoutsetinfo('muhash')
         index_node.invalidateblock(reorg_blocks[0])
-        assert_equal(index_node.gettxoutsetinfo('muhash')['height'], 110)
+        assert_equal(index_node.gettxoutsetinfo('muhash')['height'], 10) # ITCOIN_SPECIFIC: it was 110.
 
         # Add two new blocks
         block = self.generate(index_node, 2, sync_fun=self.no_op)[1]
         res = index_node.gettxoutsetinfo(hash_type='muhash', hash_or_height=None, use_index=False)
 
         # Test that the result of the reorged block is not returned for its old block height
-        res2 = index_node.gettxoutsetinfo(hash_type='muhash', hash_or_height=112)
+        res2 = index_node.gettxoutsetinfo(hash_type='muhash', hash_or_height=12) # ITCOIN_SPECIFIC: it was 112
         assert_equal(res["bestblock"], block)
         assert_equal(res["muhash"], res2["muhash"])
         assert res["muhash"] != res_invalid["muhash"]
