@@ -29,8 +29,8 @@ class MempoolCoinbaseTest(BitcoinTestFramework):
         assert_equal(self.nodes[0].getblockcount(), 200)
 
         self.log.info("Add 4 coinbase utxos to the miniwallet")
-        # Block 76 contains the first spendable coinbase txs.
-        first_block = 76
+        # Block 112 contains the first spendable coinbase txs. ITCOIN_SPECIFIC: it was 76
+        first_block = 112  # ITCOIN_SPECIFIC: it was 76. This depends on how the 200 blocks blockchain is generated in _initialize_chain() of test_framework.py
 
         # Three scenarios for re-orging coinbase spends in the memory pool:
         # 1. Direct coinbase spend  :  spend_1
