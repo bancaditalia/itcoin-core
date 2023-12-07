@@ -412,7 +412,7 @@ class WalletSendTest(BitcoinTestFramework):
         self.log.info("If inputs are specified, do not automatically add more...")
         res = self.test_send(from_wallet=w0, to_wallet=w1, amount=51, inputs=[], add_to_wallet=False)
         assert res["complete"]
-        utxo1 = w0.listunspent()[0]
+        utxo1 = w0.listunspent()[-1] # ITCOIN_SPECIFIC: it was [0], but when COINBASE_MATURITY=0 the most recent UTXO may have a value !=50 causing failure in the next assert_equal
         assert_equal(utxo1["amount"], 50)
         ERR_NOT_ENOUGH_PRESET_INPUTS = "The preselected coins total amount does not cover the transaction target. " \
                                        "Please allow other inputs to be automatically selected or include more coins manually"
