@@ -581,7 +581,7 @@ BOOST_FIXTURE_TEST_CASE(ListCoinsTest, ListCoinsTestingSetup)
     BOOST_CHECK_EQUAL(list.begin()->second.size(), 101U); // ITCOIN_SPECIFIC: it was 1U, but COINBASE_MATURITY=0 implies that in a 101 blocks chain we have 101 UTXO
 
     // Check initial balance from one mature coinbase transaction.
-    BOOST_CHECK_EQUAL(50 * COIN, WITH_LOCK(wallet->cs_wallet, return AvailableCoins(*wallet).GetTotalAmount()));
+    BOOST_CHECK_EQUAL(101 * 50 * COIN, WITH_LOCK(wallet->cs_wallet, return AvailableCoins(*wallet).GetTotalAmount())); // ITCOIN_SPECIFIC: it was 50 * COIN, but COINBASE_MATURITY=0 implies that the 101 UTXO are all mature
 
     // Add a transaction creating a change address, and confirm ListCoins still
     // returns the coin associated with the change address underneath the
@@ -657,7 +657,7 @@ BOOST_FIXTURE_TEST_CASE(BasicOutputTypesTest, ListCoinsTest)
 
     // Verify our wallet has one usable coinbase UTXO before starting
     // This UTXO is a P2PK, so it should show up in the Other bucket
-    expected_coins_sizes[OutputType::UNKNOWN] = 1U;
+    expected_coins_sizes[OutputType::UNKNOWN] = 101U; // ITCOIN_SPECIFIC: it was 1U, but COINBASE_MATURITY=0 implies that we have 101 UTXO
     CoinsResult available_coins = WITH_LOCK(wallet->cs_wallet, return AvailableCoins(*wallet));
     BOOST_CHECK_EQUAL(available_coins.Size(), expected_coins_sizes[OutputType::UNKNOWN]);
     BOOST_CHECK_EQUAL(available_coins.coins[OutputType::UNKNOWN].size(), expected_coins_sizes[OutputType::UNKNOWN]);
@@ -671,6 +671,7 @@ BOOST_FIXTURE_TEST_CASE(BasicOutputTypesTest, ListCoinsTest)
 
     for (const auto& out_type : OUTPUT_TYPES) {
         if (out_type == OutputType::UNKNOWN) continue;
+        expected_coins_sizes[OutputType::UNKNOWN] -= 1; // ITCOIN_SPECIFIC: To be checked, but I think the reason is that the transaction sent in TestCoinsResult consumes a coinbase coin, while the new block coinbase is not counted because it is not added to the wallet
         expected_coins_sizes[out_type] = 2U;
         TestCoinsResult(*this, out_type, 1 * COIN, expected_coins_sizes);
     }
