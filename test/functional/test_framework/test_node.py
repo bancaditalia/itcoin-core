@@ -752,6 +752,9 @@ class TestNodeCLI():
             p_args += [command]
         p_args += pos_args + named_args
         self.log.debug("Running bitcoin-cli {}".format(p_args[2:]))
+        # TODO: ITCOIN_SPECIFIC add FBFT library dir to LD_LIBRARY_PATH, is this change still needed?
+        # subp_env = dict(os.environ, LD_LIBRARY_PATH=f'$LD_LIBRARY_PATH:{ITCOIN_PBFT_ROOT_DIR}/usrlocal/lib')
+        # process = subprocess.Popen(p_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,  env=subp_env)
         process = subprocess.Popen(p_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         cli_stdout, cli_stderr = process.communicate(input=self.input)
         returncode = process.poll()
