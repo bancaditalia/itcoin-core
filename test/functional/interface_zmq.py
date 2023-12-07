@@ -4,6 +4,7 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test the ZMQ notification interface."""
 import struct
+import time  # ITCOIN_SPECIFIC
 from time import sleep
 
 from test_framework.address import (
@@ -22,6 +23,7 @@ from test_framework.messages import (
 )
 from test_framework.util import (
     assert_equal,
+    assert_greater_than_or_equal,  # ITCOIN_SPECIFIC
     assert_raises_rpc_error,
     p2p_port,
 )
@@ -29,6 +31,7 @@ from test_framework.wallet import (
     MiniWallet,
 )
 from test_framework.netutil import test_ipv6_local
+from test_framework.test_framework_itcoin import MsgItcoinblock  # ITCOIN_SPECIFIC
 
 
 # Test may be skipped and not have zmq installed
@@ -183,16 +186,24 @@ class ZMQTest (BitcoinTestFramework):
         self.restart_node(0, ["-zmqpubrawtx=foo", "-zmqpubhashtx=bar"])
 
         address = f"tcp://127.0.0.1:{self.zmq_port_base}"
-        subs = self.setup_zmq_test([(topic, address) for topic in ["hashblock", "hashtx", "rawblock", "rawtx"]])
+        subs = self.setup_zmq_test([(topic, address) for topic in ["hashblock", "hashtx", "rawblock", "rawtx", "itcoinblock"]])  # ITCOIN_SPECIFIC: added "itcoinblock"
 
         hashblock = subs[0]
         hashtx = subs[1]
         rawblock = subs[2]
         rawtx = subs[3]
+        itcoinblock = subs[4]  # ITCOIN_SPECIFIC
 
         num_blocks = 5
+        # ITCOIN_SPECIFIC - START
+        initial_height = self.nodes[0].getblockchaininfo()['blocks']
+        # In this test case, the initial chain is set up with 201 blocks or more
+        assert_greater_than_or_equal(initial_height, 201)
+        timestamp_before_block_generation = int(time.time())
+        # ITCOIN_SPECIFIC - END
         self.log.info(f"Generate {num_blocks} blocks (and {num_blocks} coinbase txes)")
         genhashes = self.generatetoaddress(self.nodes[0], num_blocks, ADDRESS_BCRT1_UNSPENDABLE)
+        timestamp_after_block_generation = int(time.time())  # ITCOIN_SPECIFIC
 
         for x in range(num_blocks):
             # Should receive the coinbase txid.
@@ -213,6 +224,23 @@ class ZMQTest (BitcoinTestFramework):
             # The block should only have the coinbase txid.
             assert_equal([txid.hex()], self.nodes[1].getblock(hash)["tx"])
 
+            # ITCOIN_SPECIFIC - START
+            # Should receive the generated itcoinblock notifications
+            msg_itcoinblock = MsgItcoinblock.from_bin_buf(itcoinblock.receive())
+            # verify the itcoinblock message contents
+            assert_equal(msg_itcoinblock.blockhash_hex(), genhashes[x])
+            assert_equal(msg_itcoinblock.height, initial_height + 1 + x)
+            # verify that each block nTime is greater than the previous one,
+            # and that their absolute value is between
+            # timestamp_before_block_generation and timestamp_after_block_generation
+            if x == 0:
+                assert_greater_than_or_equal(msg_itcoinblock.nTime, timestamp_before_block_generation)
+            else:
+                assert_greater_than_or_equal(msg_itcoinblock.nTime, previous_ntime)
+            if x == (num_blocks - 1):
+                assert_greater_than_or_equal(timestamp_after_block_generation, msg_itcoinblock.nTime)
+            previous_ntime = msg_itcoinblock.nTime
+            # ITCOIN_SPECIFIC - END
 
         self.log.info("Wait for tx from second node")
         payment_tx = self.wallet.send_self_transfer(from_node=self.nodes[1])
