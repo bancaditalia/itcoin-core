@@ -2343,7 +2343,7 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
              Ticks<MillisecondsDouble>(time_connect) / num_blocks_total);
 
     // ITCOIN_SPECIFIC START
-    if (m_params.GetConsensus().allow_any_block_subsidy) {
+    if (params.GetConsensus().allow_any_block_subsidy) {
         // Do not enforce rules on block subsidy value in the coinbase
     } else {
         // original bitcoin code
