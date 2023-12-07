@@ -55,6 +55,8 @@ class P2PEvict(BitcoinTestFramework):
         protected_peers = set()  # peers that we expect to be protected from eviction
         current_peer = -1
         node = self.nodes[0]
+        # TODO: This line has been deleted in 25.1, shall we delete also here? Added as comment, let's see if the test will pass
+        # self.generatetoaddress(node, 100 + 1, node.get_deterministic_priv_key().address) # ITCOIN_SPECIFIC: it was COINBASE_MATURITY + 1 instead of hardcoded 100.
         self.wallet = MiniWallet(node)
 
         self.log.info("Create 4 peers and protect them from eviction by sending us a block")
