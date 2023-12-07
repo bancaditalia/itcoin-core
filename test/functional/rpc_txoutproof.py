@@ -28,6 +28,8 @@ class MerkleBlockTest(BitcoinTestFramework):
         miniwallet = MiniWallet(self.nodes[0])
 
         chain_height = self.nodes[1].getblockcount()
+        # TODO: This should be okay now!
+        # assert_equal(chain_height, 5)  # ITCOIN_SPECIFIC COINBASE_MATURITY = 0 only 5 blocks are generated. It was 105
         assert_equal(chain_height, 200)
 
         txid1 = miniwallet.send_self_transfer(from_node=self.nodes[0])['txid']
