@@ -18,11 +18,17 @@ miner = import_miner()
 
 class TestBlockValidityTest(BitcoinTestFramework):
 
+    def add_options(self, parser):
+        self.add_wallet_options(parser)
+
+    def skip_test_if_missing_module(self):
+        # This also self._requires_wallet = True
+        self.skip_if_no_wallet()
+
     def set_test_params(self):
         self.num_nodes = 1
 
         # parent class attributes
-        self.requires_wallet = True
         self.setup_clean_chain = True
 
     @classmethod

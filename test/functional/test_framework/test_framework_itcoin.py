@@ -116,6 +116,13 @@ class BaseItcoinTest(BitcoinTestFramework):
         self._validate_node_id(i)
         return self._node_wrappers[i]
 
+    def add_options(self, parser):
+        self.add_wallet_options(parser)
+
+    def skip_test_if_missing_module(self):
+        # This also self._requires_wallet = True
+        self.skip_if_no_wallet()
+
     def set_test_params(self, set_signet_challenge_as_extra_arg=True) -> None:
         """Configure the test."""
         self.signet_num_signers: int
@@ -127,7 +134,6 @@ class BaseItcoinTest(BitcoinTestFramework):
 
         # parent class attributes
         self.chain = SIGNET
-        self.requires_wallet = True
         self.setup_clean_chain = True
 
         # supposed to be private
