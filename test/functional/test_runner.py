@@ -160,7 +160,7 @@ BASE_SCRIPTS = [
     'wallet_labels.py --legacy-wallet',
     'wallet_labels.py --descriptors',
     # ITCOIN_SPECIFIC - START
-    'itcoin_feature_control_block_time.py',
+    'itcoin_feature_control_block_time.py --legacy-wallet',
     'itcoin_feature_num_nodes_differs_from_num_signers.py --legacy-wallet',
     'itcoin_feature_solution_independent_blockchain_1_of_2.py --legacy-wallet',
     'itcoin_feature_solution_independent_blockchain_3_of_4.py --legacy-wallet',
@@ -168,7 +168,7 @@ BASE_SCRIPTS = [
     'itcoin_feature_taproot_challenge_frost_pubkey_tweaked.py',
     'itcoin_rpc_testblockvalidity_1.py',
     'itcoin_rpc_testblockvalidity_2.py',
-    'itcoin_zmq_itcoinblock.py',
+    'itcoin_zmq_itcoinblock.py --legacy-wallet',
     # ITCOIN_SPECIFIC - END
     'p2p_compactblocks.py',
     'p2p_compactblocks_blocksonly.py',

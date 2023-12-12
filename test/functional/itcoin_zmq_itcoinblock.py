@@ -47,6 +47,7 @@ class ZMQItcoinblockIBD(BaseItcoinTest):
         return self.nodes[0].getblockchaininfo()
 
     def skip_test_if_missing_module(self):
+        super(ZMQItcoinblockIBD, self).skip_test_if_missing_module()
         self.skip_if_no_py3_zmq()
         self.skip_if_no_bitcoind_zmq()
 
