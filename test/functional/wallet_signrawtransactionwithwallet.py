@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2015-2021 The Bitcoin Core developers
+# Copyright (c) 2015-2022 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test transaction signing using the signrawtransactionwithwallet RPC."""
@@ -34,6 +34,9 @@ from decimal import (
 )
 
 class SignRawTransactionWithWalletTest(BitcoinTestFramework):
+    def add_options(self, parser):
+        self.add_wallet_options(parser)
+
     def set_test_params(self):
         self.setup_clean_chain = True
         self.num_nodes = 2
@@ -143,7 +146,7 @@ class SignRawTransactionWithWalletTest(BitcoinTestFramework):
     def test_fully_signed_tx(self):
         self.log.info("Test signing a fully signed transaction does nothing")
         self.nodes[0].walletpassphrase("password", 9999)
-        self.generate(self.nodes[0], 100 + 1) # ITCOIN_SPECIFIC: it was COINBASE_MATURITY + 100 but at least 100 blocks are required in test_signing_with_cltv.
+        self.generate(self.nodes[0], 100 + 1) # ITCOIN_SPECIFIC: it was COINBASE_MATURITY + 1 but at least 100 blocks are required in test_signing_with_cltv.
         rawtx = self.nodes[0].createrawtransaction([], [{self.nodes[0].getnewaddress(): 10}])
         fundedtx = self.nodes[0].fundrawtransaction(rawtx)
         signedtx = self.nodes[0].signrawtransactionwithwallet(fundedtx["hex"])
