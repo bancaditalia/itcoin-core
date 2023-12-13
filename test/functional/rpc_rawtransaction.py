@@ -540,7 +540,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         rawTx = self.nodes[0].decoderawtransaction(rawTxSigned['hex'])
         self.sync_all()
         self.generate(self.nodes[0], 1)
-        assert_equal(self.nodes[0].getbalance(), bal + Decimal('50.00000000') + Decimal('2.19000000') + Decimal('0.01'))  # block reward + tx  # ITCOIN_SPECIFIC: added "Decimal('0.01')" since block reward includes a fee that is immediately mature.
+        assert_equal(self.nodes[0].getbalance(), bal + Decimal('25.00000000') + Decimal('2.19000000') + Decimal('0.01'))  # block reward + tx  # ITCOIN_SPECIFIC: block subsidy is changed from 50 to 25, since we are past 150 blocks, added "Decimal('0.01')" since block reward includes a fee that is immediately mature.
 
         # 2of2 test for combining transactions
         bal = self.nodes[2].getbalance()
@@ -583,7 +583,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         rawTx2 = self.nodes[0].decoderawtransaction(rawTxComb)
         self.sync_all()
         self.generate(self.nodes[0], 1)
-        assert_equal(self.nodes[0].getbalance(), bal + Decimal('50.00000000') + Decimal('2.19000000') + Decimal('0.01'))  # block reward + tx  # ITCOIN_SPECIFIC: added "Decimal('0.01')"
+        assert_equal(self.nodes[0].getbalance(), bal + Decimal('25.00000000') + Decimal('2.19000000') + Decimal('0.01'))  # block reward + tx  # ITCOIN_SPECIFIC: block subsidy changed to 25, added "Decimal('0.01')"
 
 
 if __name__ == '__main__':
