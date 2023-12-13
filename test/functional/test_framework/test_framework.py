@@ -804,7 +804,7 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
             # ITCOIN_SPECIFIC - START
             #
             # Create a 199-block-long chain;
-            # Node1 and Node2 get 38 mature blocks. Node3 gets 86 mature blocks.
+            # Node1 and Node2 get 38 mature blocks. Address 3, a deterministic p2tr which may belong to any node, gets 86 mature blocks.
             # The 1st address (i.e. Node0) gets 37 mature blocks so that the very last
             # block in the cache, which is later generated in the setup_nodes()
             # function, does not age too much (have an old tip age).

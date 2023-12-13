@@ -33,7 +33,7 @@ class ScantxoutsetTest(BitcoinTestFramework):
         self.wallet = MiniWallet(self.nodes[0])
 
         self.log.info("Test if we find coinbase outputs.")
-        assert_equal(sum(u["coinbase"] for u in self.nodes[0].scantxoutset("start", [self.wallet.get_descriptor()])["unspents"]), 49)
+        assert_equal(sum(u["coinbase"] for u in self.nodes[0].scantxoutset("start", [self.wallet.get_descriptor()])["unspents"]), 86) # ITCOIN_SPECIFIC: it was 49, but in our test framework the deterministic P2TR address gets 86 coinbase UTXOs, see how initialize_chain works in test_framework.py for more details.
 
         self.log.info("Create UTXOs...")
         pubk1, spk_P2SH_SEGWIT, addr_P2SH_SEGWIT = getnewdestination("p2sh-segwit")
