@@ -123,7 +123,7 @@ class GetBlockFromPeerTest(BitcoinTestFramework):
         self.generate(self.nodes[0], 400, sync_fun=self.no_op)
         self.sync_blocks([self.nodes[0], pruned_node])
         pruneheight = pruned_node.pruneblockchain(300)
-        assert_equal(pruneheight, 248)
+        assert_equal(pruneheight, 247) # ITCOIN_SPECIFIC it was 248. The prune heights used here and below are magic numbers that are determined by the thresholds at which block files wrap, so they depend on disk serialization and default block file size. After COINBASE_MATURITY = 0, is there a different magic number?
         # Ensure the block is actually pruned
         pruned_block = self.nodes[0].getblockhash(2)
         assert_raises_rpc_error(-1, "Block not available (pruned data)", pruned_node.getblock, pruned_block)
