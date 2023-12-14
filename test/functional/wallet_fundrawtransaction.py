@@ -638,7 +638,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         self.generate(self.nodes[1], 1)
 
         # Make sure funds are received at node1.
-        assert_equal(oldBalance+Decimal('51.10000000'), self.nodes[0].getbalance())
+        assert_equal(oldBalance+Decimal('1.10000000'), self.nodes[0].getbalance()) # ITCOIN_SPECIFIC: it was 51.1 because after node1 mined a new block, node0 would have had another mature coinbase for an old block. Since COINBASE_MATURITY is now zero we do not have a new mature coinbase, so we just sum the transaction output value.
 
     def test_many_inputs_fee(self):
         """Multiple (~19) inputs tx test | Compare fee."""
@@ -688,7 +688,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         fundedAndSignedTx = self.nodes[1].signrawtransactionwithwallet(fundedTx['hex'])
         self.nodes[1].sendrawtransaction(fundedAndSignedTx['hex'])
         self.generate(self.nodes[1], 1)
-        assert_equal(oldBalance+Decimal('50.19000000'), self.nodes[0].getbalance()) #0.19+block reward
+        assert_equal(oldBalance+Decimal('0.19000000'), self.nodes[0].getbalance()) #0.19+block reward # ITCOIN_SPECIFIC: it was 50.19, but we do not have the block reward for the new mature block
 
     def test_op_return(self):
         self.log.info("Test fundrawtxn with OP_RETURN and no vin")
